@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gestión de Menús Configurables</h1>
+        <div>
+            <a href="/admin/gestion-componentes" class="btn btn-info">Gestionar Componentes</a>
+            <a href="/admin/menus/nuevo" class="btn btn-primary">Añadir Menú</a>
+        </div>
+    </div>
+
+    <div class="list-group">
+        <% menus.forEach(menu => { %>
+            <div class="list-group-item">
+                <div class="row align-items-center">
+                    <div class="col-md-5">
+                        <h5 class="mb-1"><%= menu.nombre %></h5>
+                        <small class="text-muted">Precio Base: $<%= parseFloat(menu.precio_base).toFixed(2) %></small>
+                    </div>
+                    <div class="col-md-2">
+                        <!-- Switch para activar/desactivar (lo haremos funcional más adelante) -->
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="switch-<%= menu.id %>" <%= menu.activo ? 'checked' : '' %>>
+                            <label class="form-check-label" for="switch-<%= menu.id %>"><%= menu.activo ? 'Activo' : 'Inactivo' %></label>
+                        </div>
+                    </div>
+                    <div class="col-md-5 text-end">
+                        <a href="/admin/menus/<%= menu.id %>/configurar" class="btn btn-success btn-sm">
+                            <i class="fas fa-cog"></i> Configurar Componentes
+                        </a>
+                        <!-- NUEVOS BOTONES DE EDITAR Y ELIMINAR -->
+                        <a href="/admin/menus/editar/<%= menu.id %>" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <form action="/admin/menus/eliminar/<%= menu.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de que desea eliminar el menú <%= menu.nombre %>?');">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

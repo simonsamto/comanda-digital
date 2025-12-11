@@ -1,0 +1,14 @@
+<%- include('../partials/header') %>
+<div class="container mt-4">
+    <h1><%= typeof categoria !== 'undefined' && categoria.id ? 'Editar Categoría' : 'Añadir Nueva Categoría' %></h1>
+    <%- include('../partials/messages') %>
+    <form action="<%= typeof categoria !== 'undefined' && categoria.id ? '/admin/menu/categorias/editar/' + categoria.id : '/admin/menu/categorias/nueva' %>" method="POST">
+        <div class="mb-3">
+            <label for="nombre" class="form-label">Nombre de la Categoría</label>
+            <input type="text" class="form-control" id="nombre" name="nombre" value="<%= typeof categoria !== 'undefined' ? categoria.nombre : '' %>" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar Categoría</button>
+        <a href="/admin/menu" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+<%- include('../partials/footer') %>

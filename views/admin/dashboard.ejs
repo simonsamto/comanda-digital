@@ -1,0 +1,52 @@
+<%- include('../partials/header') %>
+
+<main class="container mt-4">
+    <div class="bg-light p-5 rounded">
+        <h1>Bienvenido al Panel de Administrador</h1>
+        <p class="lead">Desde aquí podrás gestionar todos los aspectos de tu restaurante.</p>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Gestión de Personal</h5>
+                    <p class="card-text">Añade, edita y gestiona los roles de tus empleados.</p>
+                    <a href="/admin/usuarios" class="btn btn-primary">Gestionar Usuarios</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Configuración del Restaurante</h5>
+                    <p class="card-text">Define las mesas disponibles en tu local.</p>
+                    <a href="/admin/mesas" class="btn btn-primary">Gestionar Mesas</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Menú Digital</h5>
+                    <p class="card-text">Crea y edita las categorías y productos de tu menú.</p>
+                    <a href="/admin/menu" class="btn btn-primary">Gestionar Menú</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Análisis y Reportes</h5>
+                    <p class="card-text">Visualiza las ventas y el rendimiento de tu negocio.</p>
+                    <a href="/admin/reportes" class="btn btn-secondary disabled" tabindex="-1" aria-disabled="true">Ver Reportes (Próximamente)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<%- include('../partials/footer') %>

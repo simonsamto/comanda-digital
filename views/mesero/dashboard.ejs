@@ -1,0 +1,86 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-map-marked-alt"></i> Mapa de Mesas</h1>
+        <div class="small">
+            <span class="badge bg-success me-1">Libre</span>
+            <span class="badge bg-danger me-1">Cocina</span>
+            <span class="badge bg-info text-dark me-1">¡Recoger!</span>
+            <span class="badge bg-warning text-dark">Caja</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <% mesas.forEach(mesa => { %>
+            <div class="col-6 col-md-3 col-lg-2 mb-4">
+                
+                <% if (mesa.estado === 'libre') { %>
+                    <!-- ESTADO: LIBRE -->
+                    <a href="/mesero/mesa/<%= mesa.id %>/clientes" class="text-decoration-none text-dark">
+                        <div class="card h-100 text-center shadow-sm border-success card-mesa">
+                            <div class="card-body bg-success text-white rounded">
+                                <i class="fas fa-chair fa-3x mb-2"></i>
+                                <h5 class="card-title mb-0">Mesa <%= mesa.numero %></h5>
+                            </div>
+                            <div class="card-footer fw-bold text-success">Libre</div>
+                        </div>
+                    </a>
+
+                <% } else if (mesa.estado === 'para_recoger') { %>
+                    <!-- ESTADO: RECOGER (FORMULARIO POST) -->
+                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="height: 100%;">
+                        <button type="submit" class="card h-100 w-100 text-center shadow border-info p-0 btn-light card-mesa" onclick="return confirm('¿Confirmas entrega?');">
+                            <div class="card-body bg-info text-dark rounded">
+                                <i class="fas fa-bell fa-shake fa-3x mb-2"></i>
+                                <h5 class="card-title mb-0">Mesa <%= mesa.numero %></h5>
+                            </div>
+                            <div class="card-footer fw-bold text-dark animate__animated animate__pulse animate__infinite">¡RECOGER!</div>
+                        </button>
+                    </form>
+
+                <% } else if (mesa.estado === 'por_cobrar') { %>
+                    <!-- ESTADO: CAJA -->
+                    <div class="card h-100 text-center opacity-75 card-mesa" style="cursor: not-allowed;">
+                        <div class="card-body bg-warning text-dark rounded">
+                            <i class="fas fa-cash-register fa-3x mb-2"></i>
+                            <h5 class="card-title mb-0">Mesa <%= mesa.numero %></h5>
+                        </div>
+                        <div class="card-footer fw-bold text-dark">En Caja</div>
+                    </div>
+
+                <% } else { %>
+                    <!-- ESTADO: OCUPADO -->
+                    <div class="card h-100 text-center opacity-75 card-mesa" style="cursor: not-allowed;">
+                        <div class="card-body bg-danger text-white rounded">
+                            <i class="fas fa-utensils fa-3x mb-2"></i>
+                            <h5 class="card-title mb-0">Mesa <%= mesa.numero %></h5>
+                        </div>
+                        <div class="card-footer fw-bold text-danger">Ocupada</div>
+                    </div>
+                <% } %>
+
+            </div>
+        <% }); %>
+    </div>
+</div>
+
+<style>
+    .card-mesa { transition: transform 0.2s; border-radius: 12px; }
+    .card-mesa:hover { transform: translateY(-5px); }
+    @keyframes pulse-blue {
+        0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
+        70% { box-shadow: 0 0 0 15px rgba(13, 202, 240, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); }
+    }
+    .bg-info { animation: pulse-blue 2s infinite; }
+</style>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    socket.on('pedido_listo_para_recoger', () => location.reload());
+    socket.on('mesa_liberada', () => location.reload()); 
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,50 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between mb-4">
+        <h1><i class="fas fa-cash-register"></i> Caja</h1>
+        <a href="/cajero" class="btn btn-outline-dark"><i class="fas fa-sync"></i> Actualizar</a>
+    </div>
+
+    <div class="row">
+        <% if (pedidos.length === 0) { %>
+            <div class="col-12 text-center py-5 text-muted">
+                <h3>No hay mesas pendientes de cobro</h3>
+                <p>Las mesas aparecerán aquí cuando el mesero entregue el pedido.</p>
+            </div>
+        <% } else { %>
+            <% pedidos.forEach(pedido => { %>
+                <div class="col-md-4 mb-4">
+                    <div class="card border-warning shadow">
+                        <div class="card-header bg-warning text-dark d-flex justify-content-between">
+                            <h4 class="mb-0 fw-bold">Mesa <%= pedido.mesa.numero %></h4>
+                            <span class="badge bg-dark">#<%= pedido.id %></span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title text-center my-3">
+                                Total a Pagar: <span class="text-success">$XXX</span>
+                            </h5>
+                            <!-- Aquí podrías listar los items si quisieras -->
+                            <p class="text-center text-muted small">Estado: Por Cobrar</p>
+                            
+                            <form action="/cajero/cobrar/<%= pedido.id %>" method="POST">
+                                <button type="submit" class="btn btn-success w-100 btn-lg">
+                                    <i class="fas fa-check-double"></i> Cobrar y Liberar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        <% } %>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    // Si un mesero entrega un plato, actualizar esta pantalla automáticamente
+    socket.on('mesa_por_cobrar', () => location.reload());
+</script>
+
+<%- include('../partials/footer') %>

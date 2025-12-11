@@ -1,0 +1,56 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Gestión de Menú</h1>
+        <div>
+            <a href="/admin/menu/productos/nuevo" class="btn btn-primary">Añadir Producto</a>
+            <a href="/admin/menu/categorias/nueva" class="btn btn-success">Añadir Categoría</a>
+            <a href="/admin/menu/componentes" class="btn btn-info">Gestionar Componentes</a>
+        </div>
+    </div>
+
+    <%- include('../partials/messages') %>
+
+    <% if (categorias && categorias.length > 0) { %>
+        <!-- Bucle principal que recorre cada CATEGORÍA -->
+        <% categorias.forEach(categoria => { %>
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3><%= categoria.nombre %></h3>
+                    <div>
+                        <a href="/admin/menu/categorias/editar/<%= categoria.id %>" class="btn btn-sm btn-outline-secondary">Editar Categoría</a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover align-middle mb-0">
+                        <tbody>
+                            <!-- Verificación y bucle secundario que recorre los PRODUCTOS de ESTA categoría -->
+                            <% if (categoria.Productos && categoria.Productos.length > 0) { %>
+                                <% categoria.Productos.forEach(producto => { %>
+                                    <tr>
+                                        <td class="w-25 ps-3"><strong><%= producto.nombre %></strong></td>
+                                        <td class="w-50"><%= producto.descripcion %></td>
+                                        <td>$<%= parseFloat(producto.precio).toFixed(2) %></td>
+                                        <td class="text-end pe-3">
+                                            <a href="/admin/menu/productos/editar/<%= producto.id %>" class="btn btn-sm btn-warning">Editar</a>
+                                            <a href="/admin/menu/configurar/<%= producto.id %>" class="btn btn-sm btn-primary">Configurar</a>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted p-3">No hay productos en esta categoría.</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <% }); %>
+    <% } else { %>
+        <p class="text-center">No hay categorías creadas. Empieza por crear una.</p>
+    <% } %>
+</div>
+
+<%- include('../partials/footer') %>

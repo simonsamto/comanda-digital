@@ -1,0 +1,40 @@
+<%- include('../partials/header') %>
+
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Seleccionar Menú para Mesa <%= mesa.numero %>
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead text-center mb-4">Por favor, seleccione el menú que desea utilizar:</p>
+
+                        <div class="d-grid gap-3">
+                            <% menus.forEach(menu=> { %>
+                                <a href="/mesero/tomar-pedido/<%= mesa.id %>?menuId=<%= menu.id %>&cantidadClientes=<%= cantidadClientes %>"
+                                    class="btn btn-outline-primary btn-lg p-4 text-start">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h4 class="mb-1">
+                                                <%= menu.nombre %>
+                                            </h4>
+                                            <small class="text-muted">Precio Base: $<%= menu.precio_base %></small>
+                                        </div>
+                                        <i class="bi bi-chevron-right"></i>
+                                    </div>
+                                </a>
+                                <% }) %>
+                        </div>
+
+                        <div class="mt-4 text-center">
+                            <a href="/mesero" class="btn btn-secondary">Volver al Mapa de Mesas</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../partials/footer') %>

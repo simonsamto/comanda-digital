@@ -1,0 +1,76 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Pedido: Mesa <%= mesa.numero %></h1>
+        <a href="/mesero" class="btn btn-secondary">Cancelar</a>
+    </div>
+
+    <!-- FORMULARIO DIRECTO -->
+    <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="POST">
+        
+        <div class="row">
+            <!-- COLUMNA IZQUIERDA: CLIENTES Y OPCIONES -->
+            <div class="col-lg-8">
+                <% clientesConMenus.forEach((clienteData, index) => { %>
+                    <div class="card mb-4 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <strong>Cliente <%= clienteData.clienteNumero %></strong> - <%= clienteData.menu.nombre %>
+                        </div>
+                        <div class="card-body">
+                            <!-- ID DEL MENÚ (OCULTO) -->
+                            <input type="hidden" name="clientes[<%= index %>][menuId]" value="<%= clienteData.menu.id %>">
+
+                            <div class="row">
+                                <% Object.keys(clienteData.grupos).forEach(nombreGrupo => { %>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-bold border-bottom pb-1"><%= nombreGrupo %></h6>
+                                        
+                                        <% const grupo = clienteData.grupos[nombreGrupo]; %>
+                                        <% grupo.componentes.forEach((componente) => { %>
+                                            <div class="form-check">
+                                                <!-- CHECKBOX SIMPLE -->
+                                                <input class="form-check-input" type="checkbox" 
+                                                       name="clientes[<%= index %>][<%= grupo.id %>][]" 
+                                                       value="<%= componente.id %>"
+                                                       id="c_<%= index %>_<%= componente.id %>">
+                                                <label class="form-check-label" for="c_<%= index %>_<%= componente.id %>">
+                                                    <%= componente.nombre %>
+                                                </label>
+                                            </div>
+                                        <% }); %>
+                                    </div>
+                                <% }); %>
+                            </div>
+
+                            <div class="mt-2">
+                                <label class="small text-muted">Notas:</label>
+                                <input type="text" name="clientes[<%= index %>][notas]" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+
+            <!-- COLUMNA DERECHA: BOTÓN DE ENVÍO -->
+            <div class="col-lg-4">
+                <div class="card shadow sticky-top" style="top: 20px;">
+                    <div class="card-body bg-light">
+                        <h4 class="text-center mb-3">Confirmar Pedido</h4>
+                        <p class="text-muted small text-center">Verifique las opciones antes de enviar.</p>
+                        
+                        <div class="d-grid">
+                            <!-- BOTÓN TYPE SUBMIT PURO -->
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-paper-plane"></i> ENVIAR A COCINA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<%- include('../partials/footer') %>

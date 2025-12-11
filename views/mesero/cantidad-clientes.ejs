@@ -1,0 +1,31 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-5" style="max-width: 500px;">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4>Mesa <%= mesa.numero %> - Iniciar Pedido</h4>
+        </div>
+        <div class="card-body">
+            <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="GET">
+                <div class="mb-4">
+                    <label for="cantidadClientes" class="form-label h5">¿Cuántas personas son?</label>
+                    <input type="number" 
+                           class="form-control form-control-lg text-center" 
+                           id="cantidadClientes" 
+                           name="cantidadClientes" 
+                           min="1" 
+                           max="<%= mesa.capacidad %>" 
+                           value="1" 
+                           required autofocus>
+                    <div class="form-text">Máximo <%= mesa.capacidad %> personas para esta mesa.</div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">Continuar al Menú</button>
+                    <a href="/mesero" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

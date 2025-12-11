@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <h2><%= pageTitle %></h2>
+    <hr>
+
+    <div class="card">
+        <div class="card-body">
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-danger" role="alert">
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <!--
+                El 'action' del formulario ahora es dinámico.
+                Si el objeto 'menu' tiene un 'id', estamos editando.
+                Si no, estamos creando.
+            -->
+            <form action="<%= typeof menu.id !== 'undefined' ? '/admin/menus/editar/' + menu.id : '/admin/menus/nuevo' %>" method="POST">
+                
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre del Menú</label>
+                    <input type="text" class="form-control" id="nombre" name="nombre" value="<%= menu.nombre || '' %>" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="precio_base" class="form-label">Precio Base</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="precio_base" name="precio_base" value="<%= menu.precio_base || '' %>" step="0.01" required>
+                    </div>
+                </div>
+                
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" role="switch" id="activo" name="activo" value="true" <%= (menu.activo !== false) ? 'checked' : '' %>>
+                    <label class="form-check-label" for="activo">Activo para el mesero</label>
+                </div>
+
+                <a href="/admin/gestion-menu" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar Menú</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

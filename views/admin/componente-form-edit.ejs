@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<div class="container mt-4">
+    <h2><%= pageTitle %></h2>
+    <hr>
+    <div class="card">
+        <div class="card-body">
+            <form action="/admin/componentes/editar/<%= componente.id %>" method="POST">
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre del Componente</label>
+                    <input type="text" class="form-control" id="nombre" name="nombre" value="<%= componente.nombre %>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="grupo_id" class="form-label">Grupo</label>
+                    <select class="form-select" id="grupo_id" name="grupo_id" required>
+                        <% grupos.forEach(grupo => { %>
+                            <option value="<%= grupo.id %>" <%= componente.grupo_id == grupo.id ? 'selected' : '' %>><%= grupo.nombre %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <a href="/admin/gestion-componentes" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+</div>
+<%- include('../partials/footer') %>

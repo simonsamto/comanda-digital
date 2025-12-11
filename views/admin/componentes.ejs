@@ -1,0 +1,68 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Componentes del Menú</h1>
+        <div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newComponenteModal">
+                Añadir Nuevo Componente
+            </button>
+            <a href="/admin/menu" class="btn btn-secondary">Volver al Menú</a>
+        </div>
+    </div>
+
+    <%- include('../partials/messages') %>
+
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Nombre del Componente</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (componentes.length > 0) { %>
+                <% componentes.forEach(componente => { %>
+                    <tr>
+                        <td><%= componente.nombre %></td>
+                        <td>
+                            <form action="/admin/menu/componentes/eliminar/<%= componente.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Seguro? Esto puede afectar menús ya configurados.');">
+                                <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }); %>
+            <% } else { %>
+                <tr>
+                    <td colspan="2" class="text-center">No hay componentes creados.</td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal para Nuevo Componente -->
+<div class="modal fade" id="newComponenteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo Componente de Menú</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/menu/componentes/nuevo" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="nombre" placeholder="Ej: Sopa, Proteína, Bebida" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

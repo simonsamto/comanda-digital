@@ -1,0 +1,62 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <!-- Título dinámico: Cambia según si el objeto 'usuario' tiene un ID o no -->
+    <h1><%= typeof usuario !== 'undefined' && usuario.id ? 'Editar Usuario' : 'Crear Nuevo Usuario' %></h1>
+
+    <!-- Bloque para mostrar errores de validación (funciona para crear y editar) -->
+    <% if (typeof errores !== 'undefined' && errores.length > 0) { %>
+        <div class="alert alert-danger" role="alert">
+            <strong>¡Ups! Hubo algunos problemas:</strong>
+            <ul>
+                <% errores.forEach(error => { %>
+                    <li><%= error.msg %></li>
+                <% }) %>
+            </ul>
+        </div>
+    <% } %>
+    
+    <!-- Acción del formulario dinámica: Apunta a la ruta de editar o a la de crear -->
+    <form action="<%= typeof usuario !== 'undefined' && usuario.id ? '/admin/usuarios/editar/' + usuario.id : '/admin/usuarios/nuevo' %>" method="POST">
+        
+        <div class="mb-3">
+            <label for="nombre" class="form-label">Nombre Completo</label>
+            <!-- El atributo 'value' rellena el campo con el dato existente o el dato fallido -->
+            <input type="text" class="form-control" id="nombre" name="nombre" value="<%= typeof usuario !== 'undefined' ? usuario.nombre : '' %>" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="email" class="form-label">Correo Electrónico</label>
+            <input type="email" class="form-control" id="email" name="email" value="<%= typeof usuario !== 'undefined' ? usuario.email : '' %>" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <!-- El 'placeholder' indica que es opcional en la edición -->
+            <input type="password" class="form-control" id="password" name="password" placeholder="Dejar en blanco para no cambiar">
+            
+            <!-- Lógica para hacer el campo 'password' requerido solo en la creación -->
+            <% if (typeof usuario === 'undefined' || !usuario.id) { %>
+                <script>document.getElementById('password').required = true;</script>
+            <% } %>
+        </div>
+        
+        <div class="mb-3">
+            <label for="RolId" class="form-label">Rol</label>
+            <select class="form-select" id="RolId" name="RolId" required>
+                <option value="">Seleccione un rol...</option>
+                <% roles.forEach(rol => { %>
+                    <!-- Lógica para pre-seleccionar el rol actual del usuario -->
+                    <option value="<%= rol.id %>" <%= (typeof usuario !== 'undefined' && usuario.RolId == rol.id) ? 'selected' : '' %>>
+                        <%= rol.nombre %>
+                    </option>
+                <% }) %>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        <a href="/admin/usuarios" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+
+<%- include('../partials/footer') %>
