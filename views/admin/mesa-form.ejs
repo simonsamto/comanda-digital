@@ -1,35 +1,50 @@
 <%- include('../partials/header') %>
 
-    <div class="container mt-4">
-        <h2>
-            <%= pageTitle %>
-        </h2>
-        <hr>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <%= (typeof mesa.id !== 'undefined') ? 'Editar Mesa' : 'Nueva Mesa' %>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- MENSAJES DE ERROR -->
+                    <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-danger"><%= error %></div>
+                    <% } %>
 
-        <div class="card">
-            <div class="card-body">
-                <form action="<%= typeof mesa.id !== 'undefined' ? '/admin/mesas/editar/' + mesa.id : '/admin/mesas' %>"
-                    method="POST">
+                    <!-- 
+                        FORMULARIO DINÁMICO
+                        Si existe mesa.id -> Envía a /editar/ID
+                        Si no existe -> Envía a /nueva
+                    -->
+                    <form action="<%= (typeof mesa.id !== 'undefined') ? '/admin/mesas/editar/' + mesa.id : '/admin/mesas/nueva' %>" method="POST">
+                        
+                        <div class="mb-3">
+                            <label for="numero" class="form-label">Número de Mesa</label>
+                            <input type="number" class="form-control" id="numero" name="numero" 
+                                   value="<%= mesa.numero || '' %>" required autofocus>
+                            <div class="form-text">Debe ser un número único.</div>
+                        </div>
 
-                    <div class="mb-3">
-                        <label for="numero" class="form-label">Número de Mesa</label>
-                        <input type="number" class="form-control" id="numero" name="numero"
-                            value="<%= typeof mesa.numero !== 'undefined' ? mesa.numero : '' %>" placeholder="Ej: 1"
-                            required>
-                    </div>
+                        <div class="mb-3">
+                            <label for="capacidad" class="form-label">Capacidad (Personas)</label>
+                            <input type="number" class="form-control" id="capacidad" name="capacidad" 
+                                   value="<%= mesa.capacidad || '' %>" required min="1">
+                        </div>
 
-                    <div class="mb-3">
-                        <label for="capacidad" class="form-label">Capacidad (Personas)</label>
-                        <input type="number" class="form-control" id="capacidad" name="capacidad"
-                            value="<%= typeof mesa.capacidad !== 'undefined' ? mesa.capacidad : '' %>"
-                            placeholder="Ej: 4" required>
-                    </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">Guardar Mesa</button>
+                            <a href="/admin/mesas" class="btn btn-secondary">Cancelar</a>
+                        </div>
 
-                    <a href="/admin/mesas" class="btn btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-primary">Guardar Mesa</button>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <%- include('../partials/footer') %>
+<%- include('../partials/footer') %>

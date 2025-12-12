@@ -1,26 +1,49 @@
 <%- include('../partials/header') %>
+
 <div class="container mt-4">
-    <h2><%= pageTitle %></h2>
-    <hr>
-    <div class="card">
-        <div class="card-body">
-            <form action="/admin/componentes/editar/<%= componente.id %>" method="POST">
-                <div class="mb-3">
-                    <label for="nombre" class="form-label">Nombre del Componente</label>
-                    <input type="text" class="form-control" id="nombre" name="nombre" value="<%= componente.nombre %>" required>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">Editar Componente</h4>
                 </div>
-                <div class="mb-3">
-                    <label for="grupo_id" class="form-label">Grupo</label>
-                    <select class="form-select" id="grupo_id" name="grupo_id" required>
-                        <% grupos.forEach(grupo => { %>
-                            <option value="<%= grupo.id %>" <%= componente.grupo_id == grupo.id ? 'selected' : '' %>><%= grupo.nombre %></option>
-                        <% }); %>
-                    </select>
+                <div class="card-body">
+                    <form action="/admin/componentes/editar/<%= componente.id %>" method="POST">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" name="nombre" value="<%= componente.nombre %>" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Grupo</label>
+                            <select class="form-select" name="grupo_id" required>
+                                <% grupos.forEach(grupo => { %>
+                                    <option value="<%= grupo.id %>" <%= componente.grupo_id == grupo.id ? 'selected' : '' %>>
+                                        <%= grupo.nombre %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Precio Adicional</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="precio_adicional" 
+                                       value="<%= parseFloat(componente.precio_adicional) %>" min="0" step="100">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning">Guardar Cambios</button>
+                            <a href="/admin/gestion-componentes" class="btn btn-light">Cancelar</a>
+                        </div>
+                    </form>
                 </div>
-                <a href="/admin/gestion-componentes" class="btn btn-secondary">Cancelar</a>
-                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-            </form>
+            </div>
         </div>
     </div>
 </div>
+
 <%- include('../partials/footer') %>

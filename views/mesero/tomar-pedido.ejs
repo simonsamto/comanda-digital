@@ -1,76 +1,137 @@
 <%- include('../partials/header') %>
 
+<style>
+    .cliente-card { border: 1px solid #dee2e6; }
+    .resumen-card { position: sticky; top: 20px; }
+    .form-check-label { cursor: pointer; user-select: none; }
+</style>
+
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Pedido: Mesa <%= mesa.numero %></h1>
         <a href="/mesero" class="btn btn-secondary">Cancelar</a>
     </div>
 
-    <!-- FORMULARIO DIRECTO -->
-    <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="POST">
-        
+    <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="POST" id="pedido-form">
         <div class="row">
-            <!-- COLUMNA IZQUIERDA: CLIENTES Y OPCIONES -->
             <div class="col-lg-8">
                 <% clientesConMenus.forEach((clienteData, index) => { %>
-                    <div class="card mb-4 border-primary">
+                    <div class="cliente-card card mb-4" 
+                         data-cliente-index="<%= index %>"
+                         data-cliente-numero="<%= clienteData.clienteNumero %>"
+                         data-menu-nombre="<%= clienteData.menu.nombre %>"
+                         data-precio-base="<%= parseFloat(clienteData.menu.precio_base) %>">
+                        
                         <div class="card-header bg-primary text-white">
                             <strong>Cliente <%= clienteData.clienteNumero %></strong> - <%= clienteData.menu.nombre %>
                         </div>
-                        <div class="card-body">
-                            <!-- ID DEL MENÚ (OCULTO) -->
-                            <input type="hidden" name="clientes[<%= index %>][menuId]" value="<%= clienteData.menu.id %>">
 
+                        <div class="card-body">
+                            <input type="hidden" name="clientes[<%= index %>][menuId]" value="<%= clienteData.menu.id %>">
                             <div class="row">
                                 <% Object.keys(clienteData.grupos).forEach(nombreGrupo => { %>
                                     <div class="col-md-6 mb-3">
                                         <h6 class="fw-bold border-bottom pb-1"><%= nombreGrupo %></h6>
-                                        
                                         <% const grupo = clienteData.grupos[nombreGrupo]; %>
                                         <% grupo.componentes.forEach((componente) => { %>
-                                            <div class="form-check">
-                                                <!-- CHECKBOX SIMPLE -->
-                                                <input class="form-check-input" type="checkbox" 
-                                                       name="clientes[<%= index %>][<%= grupo.id %>][]" 
-                                                       value="<%= componente.id %>"
-                                                       id="c_<%= index %>_<%= componente.id %>">
-                                                <label class="form-check-label" for="c_<%= index %>_<%= componente.id %>">
-                                                    <%= componente.nombre %>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input componente-checkbox"
+                                                    type="checkbox"
+                                                    name="clientes[<%= index %>][<%= grupo.id %>][]"
+                                                    id="c_<%= index %>_<%= componente.id %>"
+                                                    value="<%= componente.id %>"
+                                                    data-precio="<%= componente.precio_adicional || 0 %>"
+                                                    data-nombre="<%= componente.nombre %>">
+                                                
+                                                <label class="form-check-label d-flex justify-content-between align-items-center w-100 pe-2" for="c_<%= index %>_<%= componente.id %>">
+                                                    <span><%= componente.nombre %></span>
+                                                    <!-- MOSTRAR PRECIO EXTRA -->
+                                                    <% if (parseFloat(componente.precio_adicional) > 0) { %>
+                                                        <span class="badge bg-light text-dark border">
+                                                            +$<%= parseFloat(componente.precio_adicional).toLocaleString('es-CO') %>
+                                                        </span>
+                                                    <% } %>
                                                 </label>
                                             </div>
                                         <% }); %>
                                     </div>
                                 <% }); %>
                             </div>
-
                             <div class="mt-2">
-                                <label class="small text-muted">Notas:</label>
-                                <input type="text" name="clientes[<%= index %>][notas]" class="form-control form-control-sm">
+                                <input type="text" name="clientes[<%= index %>][notas]" class="form-control form-control-sm" placeholder="Notas...">
                             </div>
                         </div>
                     </div>
                 <% }); %>
             </div>
 
-            <!-- COLUMNA DERECHA: BOTÓN DE ENVÍO -->
             <div class="col-lg-4">
-                <div class="card shadow sticky-top" style="top: 20px;">
-                    <div class="card-body bg-light">
-                        <h4 class="text-center mb-3">Confirmar Pedido</h4>
-                        <p class="text-muted small text-center">Verifique las opciones antes de enviar.</p>
-                        
-                        <div class="d-grid">
-                            <!-- BOTÓN TYPE SUBMIT PURO -->
-                            <button type="submit" class="btn btn-success btn-lg">
-                                <i class="fas fa-paper-plane"></i> ENVIAR A COCINA
-                            </button>
-                        </div>
+                <div class="card resumen-card shadow-sm">
+                    <div class="card-header bg-dark text-white"><h4 class="mb-0">Resumen</h4></div>
+                    <div class="card-body" id="resumen-pedido"><p class="text-muted">Seleccione opciones...</p></div>
+                    <div class="card-footer bg-light text-end">
+                         <h3>Total: <span id="total-pedido">$0.00</span></h3>
+                        <button type="submit" class="btn btn-success w-100 btn-lg">ENVIAR A COCINA</button>
                     </div>
                 </div>
             </div>
         </div>
-
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('pedido-form');
+        const resumenDiv = document.getElementById('resumen-pedido');
+        const totalSpan = document.getElementById('total-pedido');
+
+        // Función para actualizar el resumen y sumar precios extra
+        function actualizarVista() {
+            let totalGeneral = 0;
+            let resumenHtml = '';
+            const clienteCards = document.querySelectorAll('.cliente-card');
+
+            clienteCards.forEach(card => {
+                const precioBase = parseFloat(card.dataset.precioBase);
+                const nombreMenu = card.dataset.menuNombre;
+                const clienteNum = card.dataset.clienteNumero;
+                
+                let subtotalCliente = precioBase;
+                let itemsHtml = '';
+                const checkboxes = card.querySelectorAll('.componente-checkbox:checked');
+                
+                checkboxes.forEach(cb => {
+                    // SUMAR EL PRECIO ADICIONAL
+                    const precioExtra = parseFloat(cb.dataset.precio);
+                    subtotalCliente += precioExtra;
+                    
+                    itemsHtml += `<li>${cb.dataset.nombre}`;
+                    if (precioExtra > 0) {
+                        itemsHtml += ` <small class="fw-bold text-success">(+$${precioExtra.toLocaleString()})</small>`;
+                    }
+                    itemsHtml += `</li>`;
+                });
+                
+                resumenHtml += `
+                    <div class="mb-3 border-bottom pb-2">
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>Cliente ${clienteNum}</span>
+                            <span>${nombreMenu}</span>
+                        </div>
+                        <ul class="ps-3 mb-1 small text-muted">${itemsHtml || '<li>Básico</li>'}</ul>
+                        <div class="text-end fw-bold">Sub: $${subtotalCliente.toLocaleString()}</div>
+                    </div>`;
+
+                totalGeneral += subtotalCliente;
+            });
+
+            resumenDiv.innerHTML = resumenHtml || '<p class="text-center">Seleccione...</p>';
+            totalSpan.textContent = `$${totalGeneral.toLocaleString()}`;
+        }
+
+        form.addEventListener('change', actualizarVista);
+        actualizarVista();
+    });
+</script>
 
 <%- include('../partials/footer') %>

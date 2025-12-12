@@ -1,31 +1,121 @@
 <%- include('../partials/header') %>
 
-<div class="container mt-5" style="max-width: 500px;">
-    <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-            <h4>Mesa <%= mesa.numero %> - Iniciar Pedido</h4>
+<style>
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #0d6efd; color: white; transform: scale(1.05); box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+    }
+    .btn-numero { font-size: 1.5rem; font-weight: bold; padding: 15px 0; border-radius: 12px; transition: all 0.2s; }
+    .input-manual { font-size: 2rem; font-weight: bold; text-align: center; height: 70px; }
+</style>
+
+<div class="container mt-4" style="max-width: 600px;">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-primary text-white text-center py-3">
+            <h3 class="mb-0"><i class="fas fa-users me-2"></i>Mesa <%= mesa.numero %></h3>
+            <small>Capacidad Estándar: <%= mesa.capacidad %> personas</small>
         </div>
-        <div class="card-body">
-            <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="GET">
-                <div class="mb-4">
-                    <label for="cantidadClientes" class="form-label h5">¿Cuántas personas son?</label>
-                    <input type="number" 
-                           class="form-control form-control-lg text-center" 
-                           id="cantidadClientes" 
-                           name="cantidadClientes" 
-                           min="1" 
-                           max="<%= mesa.capacidad %>" 
-                           value="1" 
-                           required autofocus>
-                    <div class="form-text">Máximo <%= mesa.capacidad %> personas para esta mesa.</div>
+        
+        <div class="card-body p-4">
+            <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="GET" id="form-cantidad">
+                
+                <h5 class="text-center mb-4 text-muted">¿Cuántas personas son?</h5>
+
+                <!-- SELECCIÓN RÁPIDA (DINÁMICA SEGÚN CAPACIDAD) -->
+                <div class="row g-3 mb-4" id="selector-rapido">
+                    
+                    <!-- Generamos botones hasta la capacidad de la mesa (máximo 12 para que no se llene la pantalla) -->
+                    <% const limiteBotones = Math.min(mesa.capacidad, 12); %>
+                    
+                    <% for(let i = 1; i <= limiteBotones; i++) { %>
+                        <div class="col-4 col-sm-3">
+                            <input type="radio" class="btn-check" name="cantidadClientes" id="cant_<%= i %>" value="<%= i %>" <%= i === 1 ? 'checked' : '' %>>
+                            <label class="btn btn-outline-primary w-100 btn-numero shadow-sm" for="cant_<%= i %>">
+                                <%= i %>
+                            </label>
+                        </div>
+                    <% } %>
+                    
+                    <!-- Botón para casos excepcionales (sillas extra o grupos grandes) -->
+                    <div class="col-12 mt-4">
+                        <button type="button" class="btn btn-outline-secondary w-100 py-3" id="btn-mas-personas">
+                            <i class="fas fa-plus-circle me-2"></i> Hay más personas (Sillas extra / Grupo grande)
+                        </button>
+                    </div>
                 </div>
+
+                <!-- ENTRADA MANUAL -->
+                <div id="selector-manual" class="d-none animate__animated animate__fadeIn">
+                    <div class="mb-4 position-relative">
+                        <label class="form-label text-center w-100 text-primary fw-bold">Ingrese el número total de personas</label>
+                        <input type="number" 
+                               class="form-control input-manual border-primary" 
+                               id="input-manual" 
+                               min="1" 
+                               max="30" 
+                               placeholder="#">
+                        <div class="invalid-feedback text-center fs-5">Solo números entre 1 y 30.</div>
+                    </div>
+                    <button type="button" class="btn btn-link w-100 text-decoration-none mb-3 text-muted" id="btn-volver-rapido">
+                        <i class="fas fa-arrow-left"></i> Volver a selección rápida
+                    </button>
+                </div>
+
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-success btn-lg">Continuar al Menú</button>
-                    <a href="/mesero" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-success btn-lg py-3 shadow">
+                        CONTINUAR <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                    <a href="/mesero" class="btn btn-light text-muted">Cancelar</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectorRapido = document.getElementById('selector-rapido');
+        const selectorManual = document.getElementById('selector-manual');
+        const btnMas = document.getElementById('btn-mas-personas');
+        const btnVolver = document.getElementById('btn-volver-rapido');
+        const inputManual = document.getElementById('input-manual');
+        const form = document.getElementById('form-cantidad');
+        const maxCapacidadNegocio = 50; // Límite absoluto del local
+
+        // Activar modo manual
+        btnMas.addEventListener('click', () => {
+            selectorRapido.classList.add('d-none');
+            selectorManual.classList.remove('d-none');
+            inputManual.value = '';
+            inputManual.focus();
+            
+            // Desmarcar radios para evitar doble envío
+            document.querySelectorAll('.btn-check').forEach(r => r.checked = false);
+            // Activar input manual para el envío
+            inputManual.setAttribute('name', 'cantidadClientes');
+        });
+
+        // Volver a modo rápido
+        btnVolver.addEventListener('click', () => {
+            selectorManual.classList.add('d-none');
+            selectorRapido.classList.remove('d-none');
+            
+            inputManual.removeAttribute('name');
+            document.getElementById('cant_1').checked = true;
+        });
+
+        form.addEventListener('submit', function(e) {
+            if (!selectorManual.classList.contains('d-none')) {
+                const valor = parseInt(inputManual.value);
+                if (isNaN(valor) || valor < 1 || valor > maxCapacidadNegocio) {
+                    e.preventDefault();
+                    inputManual.classList.add('is-invalid');
+                    alert(`Por favor, ingrese un número válido (Máximo ${maxCapacidadNegocio}).`);
+                }
+            }
+        });
+
+        inputManual.addEventListener('input', () => inputManual.classList.remove('is-invalid'));
+    });
+</script>
 
 <%- include('../partials/footer') %>

@@ -142,7 +142,16 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
         const io = req.app.get('socketio');
         if (io) {
             const pedidoCompleto = await Pedido.findByPk(nuevoPedido.id, {
-                include: [{ model: Mesa, as: 'mesa' }, { model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] }]
+                include: [
+                    { model: Mesa, as: 'mesa' }, 
+                    { 
+                        model: PedidoItem, as: 'items', 
+                        include: [{ 
+                            model: Componente, as: 'componentes',
+                            include: [{ model: Grupo, as: 'grupo' }] // <--- ¡AÑADIR ESTO!
+                         }]
+                    }
+                ]
             });
             io.emit('nuevo_pedido', pedidoCompleto.toJSON());
         }

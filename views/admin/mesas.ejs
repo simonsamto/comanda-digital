@@ -1,37 +1,76 @@
 <%- include('../partials/header') %>
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Gestión de Mesas</h1>
-        <a href="/admin/mesas/nueva" class="btn btn-primary">Añadir Nueva Mesa</a>
+    
+    <!-- CABECERA CON BOTONES DE ACCIÓN -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-chair text-secondary"></i> Gestión de Mesas</h1>
+        
+        <div class="d-flex gap-2">
+            <!-- BOTÓN NUEVO: IR AL EDITOR VISUAL -->
+            <a href="/admin/mesas/mapa" class="btn btn-info text-white shadow-sm">
+                <i class="fas fa-map-marked-alt"></i> Diseñar Mapa
+            </a>
+
+            <!-- BOTÓN DE EMERGENCIA: LIBERAR TODAS -->
+            <form action="/admin/mesas/liberar-todas" method="POST" onsubmit="return confirm('¿ESTÁS SEGURO? Esto pondrá TODAS las mesas en estado LIBRE (Verde). Úsalo solo en emergencias o al final del día.');">
+                <button type="submit" class="btn btn-danger shadow-sm">
+                    <i class="fas fa-exclamation-triangle"></i> Liberar Todas
+                </button>
+            </form>
+
+            <!-- BOTÓN: CREAR NUEVA MESA -->
+            <a href="/admin/mesas/nueva" class="btn btn-primary shadow-sm">
+                <i class="fas fa-plus"></i> Nueva Mesa
+            </a>
+        </div>
     </div>
 
-    <%- include('../partials/messages') %>
-
+    <!-- LISTA DE MESAS EXISTENTES (VISTA DE TARJETAS) -->
     <div class="row">
-        <% if (mesas.length > 0) { %>
+        <% if (!mesas || mesas.length === 0) { %>
+            <div class="col-12">
+                <div class="alert alert-info text-center py-5">
+                    <h4>No hay mesas creadas</h4>
+                    <p>Haz clic en "Nueva Mesa" para comenzar.</p>
+                </div>
+            </div>
+        <% } else { %>
             <% mesas.forEach(mesa => { %>
-                <div class="col-md-4 col-lg-3 mb-4">
-                    <div class="card text-center">
-                        <div class="card-header">
-                            <strong><%= mesa.numero %></strong>
+                <div class="col-6 col-md-4 col-lg-3 mb-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <!-- Cabecera de la tarjeta con color según estado -->
+                        <div class="card-header text-white d-flex justify-content-between align-items-center
+                            <%= mesa.estado === 'libre' ? 'bg-success' : 
+                               mesa.estado === 'ocupado' ? 'bg-danger' : 
+                               mesa.estado === 'para_recoger' ? 'bg-info' : 'bg-warning text-dark' %>">
+                            <h5 class="mb-0">Mesa <%= mesa.numero %></h5>
+                            <span class="badge bg-light text-dark"><%= mesa.capacidad %> <i class="fas fa-user"></i></span>
                         </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Capacidad: <%= mesa.capacidad %> personas</h5>
+                        
+                        <div class="card-body text-center">
+                            <p class="text-muted mb-0">Estado: <strong><%= mesa.estado.toUpperCase() %></strong></p>
+                            <% if (mesa.pos_x || mesa.pos_y) { %>
+                                <small class="text-muted" style="font-size: 0.7rem;">
+                                    Pos: <%= mesa.pos_x %>, <%= mesa.pos_y %>
+                                </small>
+                            <% } %>
                         </div>
-                        <div class="card-footer text-muted">
-                            <a href="/admin/mesas/editar/<%= mesa.id %>" class="btn btn-sm btn-warning">Editar</a>
-                            <form action="/admin/mesas/eliminar/<%= mesa.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta mesa?');">
-                                <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+
+                        <!-- Botones de Acción (Editar/Eliminar) -->
+                        <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
+                            <a href="/admin/mesas/editar/<%= mesa.id %>" class="btn btn-outline-warning btn-sm w-100 me-1">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="/admin/mesas/eliminar/<%= mesa.id %>" method="POST" class="w-100 ms-1" onsubmit="return confirm('¿Eliminar mesa <%= mesa.numero %>?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </form>
                         </div>
                     </div>
                 </div>
-            <% }) %>
-        <% } else { %>
-            <div class="col-12">
-                <p class="text-center">No hay mesas registradas. ¡Añade la primera!</p>
-            </div>
+            <% }); %>
         <% } %>
     </div>
 </div>

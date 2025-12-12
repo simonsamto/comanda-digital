@@ -1,0 +1,154 @@
+<%- include('../partials/header') %>
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+
+<style>
+    /* El lienzo del restaurante */
+    #restaurante-canvas {
+        width: 100%;
+        height: 600px;
+        background-color: #f0f2f5;
+        border: 2px dashed #ccc;
+        position: relative;
+        overflow: hidden; /* Para que no se salgan */
+        background-image: radial-gradient(#dee2e6 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+
+    /* La mesa arrastrable */
+    .mesa-draggable {
+        position: absolute;
+        background-color: #fff;
+        border: 1px solid #0d6efd;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        user-select: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        touch-action: none; /* Importante para interact.js */
+        cursor: grab;
+    }
+    
+    .mesa-draggable:active { cursor: grabbing; border-color: #0b5ed7; box-shadow: 0 8px 12px rgba(0,0,0,0.2); }
+    .mesa-info { font-weight: bold; pointer-events: none; }
+    .mesa-capacidad { font-size: 0.8rem; color: #6c757d; pointer-events: none; }
+</style>
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="fas fa-arrows-alt"></i> Diseñador de Mapa</h3>
+        <div>
+            <a href="/admin/mesas" class="btn btn-secondary me-2">Ver Lista</a>
+            <button id="btn-guardar" class="btn btn-success"><i class="fas fa-save"></i> Guardar Distribución</button>
+        </div>
+    </div>
+
+    <div class="alert alert-info py-2">
+        <small><i class="fas fa-info-circle"></i> Arrastra las mesas para ubicarlas. Tira de los bordes para cambiar el tamaño.</small>
+    </div>
+
+    <!-- EL LIENZO -->
+    <div id="restaurante-canvas">
+        <% mesas.forEach(mesa => { %>
+            <div class="mesa-draggable" 
+                 id="mesa-<%= mesa.id %>"
+                 data-id="<%= mesa.id %>"
+                 style="transform: translate(<%= mesa.pos_x %>px, <%= mesa.pos_y %>px); width: <%= mesa.ancho %>px; height: <%= mesa.alto %>px;"
+                 data-x="<%= mesa.pos_x %>" 
+                 data-y="<%= mesa.pos_y %>">
+                
+                <div class="mesa-info">Mesa <%= mesa.numero %></div>
+                <div class="mesa-capacidad"><i class="fas fa-users"></i> <%= mesa.capacidad %></div>
+            </div>
+        <% }); %>
+    </div>
+</div>
+
+<script>
+    // 1. Configurar Interact.js para Arrastrar y Redimensionar
+    interact('.mesa-draggable')
+        .draggable({
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    restriction: 'parent',
+                    endOnly: true
+                })
+            ],
+            listeners: { move: dragMoveListener }
+        })
+        .resizable({
+            edges: { left: true, right: true, bottom: true, top: true },
+            listeners: { move: resizeMoveListener },
+            modifiers: [
+                interact.modifiers.restrictEdges({ outer: 'parent' }),
+                interact.modifiers.restrictSize({ min: { width: 60, height: 60 } })
+            ]
+        });
+
+    function dragMoveListener (event) {
+        var target = event.target
+        var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx
+        var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy
+
+        target.style.transform = 'translate(' + x + 'px, ' + y + 'px)'
+        target.setAttribute('data-x', x)
+        target.setAttribute('data-y', y)
+    }
+
+    function resizeMoveListener (event) {
+        var target = event.target
+        var x = (parseFloat(target.getAttribute('data-x')) || 0)
+        var y = (parseFloat(target.getAttribute('data-y')) || 0)
+
+        target.style.width = event.rect.width + 'px'
+        target.style.height = event.rect.height + 'px'
+
+        x += event.deltaRect.left
+        y += event.deltaRect.top
+
+        target.style.transform = 'translate(' + x + 'px, ' + y + 'px)'
+        target.setAttribute('data-x', x)
+        target.setAttribute('data-y', y)
+    }
+
+    // 2. Lógica de Guardado (AJAX)
+    document.getElementById('btn-guardar').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-guardar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+        const mesasData = [];
+        document.querySelectorAll('.mesa-draggable').forEach(el => {
+            mesasData.push({
+                id: el.dataset.id,
+                x: el.dataset.x || 0,
+                y: el.dataset.y || 0,
+                w: el.style.width.replace('px', ''),
+                h: el.style.height.replace('px', '')
+            });
+        });
+
+        try {
+            const response = await fetch('/admin/mesas/mapa/guardar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(mesasData)
+            });
+            const result = await response.json();
+            
+            if(result.success) {
+                alert('¡Mapa guardado exitosamente!');
+            } else {
+                alert('Error al guardar.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error de conexión.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Guardar Distribución';
+        }
+    });
+</script>
+<%- include('../partials/footer') %>

@@ -111,48 +111,61 @@
         // --- 3. SOCKET.IO: RECIBIR PEDIDO ---
         socket.on('nuevo_pedido', function (pedido) {
             console.log("🔔 Nuevo pedido recibido:", pedido);
-            
-            // Reproducir sonido
-            if (sonidoActivado) {
-                audio.currentTime = 0;
-                audio.play();
-            }
-
-            // Ocultar placeholder "No hay pedidos"
+            if (sonidoActivado) { audio.currentTime = 0; audio.play(); }
             const placeholder = document.getElementById('no-pedidos-placeholder');
             if (placeholder) placeholder.style.display = 'none';
 
-            // Clonar plantilla
             const template = document.getElementById('comanda-template');
             const clone = template.content.cloneNode(true);
             const cardRoot = clone.querySelector('.comanda-card');
             
-            // Llenar datos
             cardRoot.id = `pedido-${pedido.id}`;
-            cardRoot.classList.add('nuevo-pedido-animacion'); // Efecto visual
-            
+            cardRoot.classList.add('nuevo-pedido-animacion');
             clone.querySelector('.mesa-numero').textContent = pedido.mesa.numero;
             clone.querySelector('.pedido-id').textContent = pedido.id;
             clone.querySelector('.pedido-hora').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             clone.querySelector('.estado-form').action = `/cocina/pedido/${pedido.id}/estado`;
 
-            // Llenar items
-            const lista = clone.querySelector('.items-list');
+            const lista = clone.querySelector('.items-list'); // Asegúrate que el template tenga <div class="items-list"></div> en vez de UL
+
             pedido.items.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item bg-transparent border-0 p-1';
+                // 1. Agrupar en JS (Igual que en EJS)
+                const grupos = {};
+                const orden = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida'];
                 
-                // Construir string de componentes
-                let componentesStr = item.componentes ? item.componentes.map(c => c.nombre).join(', ') : '';
-                
-                let html = `<strong>Cliente ${item.cliente_numero}:</strong> ${componentesStr}`;
-                if (item.notas) html += `<br><span class="badge bg-warning text-dark text-wrap"><i class="fas fa-exclamation-circle"></i> ${item.notas}</span>`;
-                
-                li.innerHTML = html;
-                lista.appendChild(li);
+                if (item.componentes) {
+                    item.componentes.forEach(comp => {
+                        // OJO: Socket.io debe enviar el grupo. Asegúrate que en meseroRoutes.js el include tenga el Grupo
+                        const gName = comp.grupo ? comp.grupo.nombre : 'Otros';
+                        if(!grupos[gName]) grupos[gName] = [];
+                        grupos[gName].push(comp.nombre);
+                    });
+                }
+
+                // 2. Construir HTML
+                let gruposHtml = '';
+                Object.keys(grupos).sort((a,b) => {
+                     // Lógica de orden simple para JS
+                     return (orden.indexOf(a) === -1 ? 99 : orden.indexOf(a)) - (orden.indexOf(b) === -1 ? 99 : orden.indexOf(b));
+                }).forEach(gName => {
+                    gruposHtml += `
+                        <div class="d-flex mb-1">
+                            <span class="badge bg-secondary me-2 align-self-start" style="min-width: 80px;">${gName}</span>
+                            <span class="fw-bold">${grupos[gName].join(', ')}</span>
+                        </div>
+                    `;
+                });
+
+                const divItem = document.createElement('div');
+                divItem.className = 'mb-3 border-bottom pb-2';
+                divItem.innerHTML = `
+                    <strong class="text-primary">Cliente ${item.cliente_numero}</strong>
+                    <div class="ms-2 mt-1">${gruposHtml}</div>
+                    ${item.notas ? `<div class="alert alert-warning py-1 px-2 mt-1 mb-0 small"><strong>Nota:</strong> ${item.notas}</div>` : ''}
+                `;
+                lista.appendChild(divItem);
             });
 
-            // Insertar al PRINCIPIO de la lista
             document.getElementById('pedidos-container').prepend(clone);
             actualizarContador();
         });

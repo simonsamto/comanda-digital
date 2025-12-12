@@ -3,7 +3,9 @@ const { Usuario, Rol, Mesa, Menu, Grupo, Componente, Pedido, PedidoItem, sequeli
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
-// --- 1. DASHBOARD (ESTADÍSTICAS) ---
+// =================================================================
+// 1. DASHBOARD PRINCIPAL (KPIs Y GRÁFICOS)
+// =================================================================
 exports.showDashboard = async (req, res) => {
     try {
         const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
@@ -54,7 +56,9 @@ exports.showDashboard = async (req, res) => {
     }
 };
 
-// --- 2. GESTIÓN DE MENÚS ---
+// =================================================================
+// 2. GESTIÓN DE MENÚS (CRUD)
+// =================================================================
 exports.getGestionMenu = async (req, res) => {
     try {
         const menus = await Menu.findAll({ order: [['id', 'ASC']] });
@@ -62,9 +66,7 @@ exports.getGestionMenu = async (req, res) => {
     } catch (error) { res.redirect('/admin'); }
 };
 
-exports.showNewMenuForm = (req, res) => {
-    res.render('admin/menu-form', { pageTitle: 'Añadir Nuevo Menú', menu: {} });
-};
+exports.showNewMenuForm = (req, res) => res.render('admin/menu-form', { pageTitle: 'Nuevo Menú', menu: {} });
 
 exports.createMenu = async (req, res) => {
     try {
@@ -72,15 +74,12 @@ exports.createMenu = async (req, res) => {
         await Menu.create({ nombre, precio_base, activo: !!activo });
         req.flash('success_msg', 'Menú creado.');
         res.redirect('/admin/gestion-menu');
-    } catch (error) {
-        res.render('admin/menu-form', { pageTitle: 'Añadir Nuevo Menú', menu: req.body, error: error.message });
-    }
+    } catch (error) { res.render('admin/menu-form', { pageTitle: 'Nuevo Menú', menu: req.body, error: error.message }); }
 };
 
 exports.showEditMenuForm = async (req, res) => {
     try {
         const menu = await Menu.findByPk(req.params.id);
-        if (!menu) return res.redirect('/admin/gestion-menu');
         res.render('admin/menu-form', { pageTitle: 'Editar Menú', menu });
     } catch (error) { res.redirect('/admin/gestion-menu'); }
 };
@@ -125,7 +124,9 @@ exports.saveConfigurarMenu = async (req, res) => {
     } catch (error) { res.redirect('/admin/gestion-menu'); }
 };
 
-// --- 3. GESTIÓN COMPONENTES Y GRUPOS ---
+// =================================================================
+// 3. GESTIÓN DE COMPONENTES Y GRUPOS (CON PRECIOS EXTRA)
+// =================================================================
 exports.getGestionComponentes = async (req, res) => {
     try {
         const grupos = await Grupo.findAll({
@@ -138,7 +139,12 @@ exports.getGestionComponentes = async (req, res) => {
 
 exports.createComponente = async (req, res) => {
     try {
-        await Componente.create(req.body);
+        const { nombre, grupo_id, precio_adicional } = req.body;
+        await Componente.create({
+            nombre,
+            grupo_id,
+            precio_adicional: parseFloat(precio_adicional) || 0
+        });
         req.flash('success_msg', 'Componente creado.');
         res.redirect('/admin/gestion-componentes');
     } catch (error) { 
@@ -158,74 +164,182 @@ exports.createGrupo = async (req, res) => {
     }
 };
 
-// Funciones para editar/eliminar componentes y grupos (necesarias para evitar error si las rutas las llaman)
-exports.showEditComponenteForm = async (req, res) => { /* Lógica pendiente o simple redirect */ res.redirect('/admin/gestion-componentes'); };
-exports.updateComponente = async (req, res) => { /* Lógica pendiente */ res.redirect('/admin/gestion-componentes'); };
-exports.deleteComponente = async (req, res) => { 
-    try { await Componente.destroy({ where: { id: req.params.id } }); res.redirect('/admin/gestion-componentes'); } catch(e){ res.redirect('/admin'); }
-};
-exports.showEditGrupoForm = async (req, res) => { /* Lógica pendiente */ res.redirect('/admin/gestion-componentes'); };
-exports.updateGrupo = async (req, res) => { /* Lógica pendiente */ res.redirect('/admin/gestion-componentes'); };
-exports.deleteGrupo = async (req, res) => { 
-    try { await Grupo.destroy({ where: { id: req.params.id } }); res.redirect('/admin/gestion-componentes'); } catch(e){ res.redirect('/admin'); }
+exports.showEditComponenteForm = async (req, res) => { 
+    try {
+        const componente = await Componente.findByPk(req.params.id);
+        const grupos = await Grupo.findAll();
+        res.render('admin/componente-form-edit', { pageTitle: 'Editar Componente', componente, grupos });
+    } catch (error) { res.redirect('/admin/gestion-componentes'); }
 };
 
-// --- 4. GESTIÓN USUARIOS Y MESAS ---
-exports.getUsuarios = async (req, res) => {
+exports.updateComponente = async (req, res) => { 
     try {
-        // Asegúrate de incluir el modelo Rol
-        const usuarios = await Usuario.findAll({ 
-            include: [{ model: Rol, as: 'rol' }], // IMPORTANTE: as: 'rol' debe coincidir con tu modelo
-            order: [['nombre', 'ASC']]
-        });
-        res.render('admin/usuarios', { pageTitle: 'Gestión de Usuarios', usuarios });
+        const { nombre, grupo_id, precio_adicional } = req.body;
+        await Componente.update({
+            nombre,
+            grupo_id,
+            precio_adicional: parseFloat(precio_adicional) || 0
+        }, { where: { id: req.params.id } });
+        req.flash('success_msg', 'Actualizado.');
+        res.redirect('/admin/gestion-componentes');
+    } catch(e) { res.redirect('/admin/gestion-componentes'); }
+};
+
+exports.deleteComponente = async (req, res) => { 
+    try { await Componente.destroy({ where: { id: req.params.id } }); res.redirect('/admin/gestion-componentes'); } catch(e){ res.redirect('/admin/gestion-componentes'); }
+};
+
+exports.showEditGrupoForm = async (req, res) => { 
+    try {
+        const grupo = await Grupo.findByPk(req.params.id);
+        res.render('admin/grupo-form-edit', { pageTitle: 'Editar Grupo', grupo });
+    } catch (error) { res.redirect('/admin/gestion-componentes'); }
+};
+
+exports.updateGrupo = async (req, res) => { 
+    try {
+        await Grupo.update(req.body, { where: { id: req.params.id } });
+        res.redirect('/admin/gestion-componentes');
+    } catch(e) { res.redirect('/admin/gestion-componentes'); }
+};
+
+exports.deleteGrupo = async (req, res) => { 
+    try { await Grupo.destroy({ where: { id: req.params.id } }); res.redirect('/admin/gestion-componentes'); } catch(e){ res.redirect('/admin/gestion-componentes'); }
+};
+
+// =================================================================
+// 4. GESTIÓN DE USUARIOS
+// =================================================================
+exports.getUsuarios = async (req, res) => { 
+    try {
+        const usuarios = await Usuario.findAll({ include: { model: Rol, as: 'rol' } });
+        res.render('admin/usuarios', { pageTitle: 'Usuarios', usuarios });
+    } catch (error) { res.redirect('/admin'); }
+};
+
+exports.showNewUserForm = async (req, res) => {
+    try {
+        const roles = await Rol.findAll();
+        res.render('admin/usuario-form', { pageTitle: 'Crear Usuario', usuario: {}, roles });
+    } catch (error) { res.redirect('/admin/usuarios'); }
+};
+
+exports.createUser = async (req, res) => {
+    try {
+        const { nombre, email, password, RolId } = req.body;
+        await Usuario.create({ nombre, email, password, RolId });
+        req.flash('success_msg', 'Usuario creado.');
+        res.redirect('/admin/usuarios');
     } catch (error) {
-        console.error("Error al cargar usuarios:", error); // Esto te dirá qué pasó en la consola
-        res.redirect('/admin'); // Aquí es donde te está redirigiendo ahora
+        const roles = await Rol.findAll();
+        res.render('admin/usuario-form', { pageTitle: 'Crear Usuario', usuario: req.body, roles, error: error.message });
     }
 };
 
-// (Añade aquí las funciones showNewUserForm, createUser, etc. si las usas)
-exports.showNewUserForm = (req, res) => res.render('admin/usuario-form', { usuario: {} });
-exports.createUser = async (req, res) => { /* ... */ res.redirect('/admin/usuarios'); };
-exports.showEditUserForm = async (req, res) => { /* ... */ res.redirect('/admin/usuarios'); };
-exports.updateUser = async (req, res) => { /* ... */ res.redirect('/admin/usuarios'); };
-exports.toggleUserStatus = async (req, res) => { /* ... */ res.redirect('/admin/usuarios'); };
+exports.showEditUserForm = async (req, res) => { 
+    try {
+        const usuario = await Usuario.findByPk(req.params.id);
+        const roles = await Rol.findAll();
+        res.render('admin/usuario-form', { pageTitle: 'Editar Usuario', usuario, roles });
+    } catch (error) { res.redirect('/admin/usuarios'); }
+};
 
+exports.updateUser = async (req, res) => { 
+    try {
+        const { nombre, email, password, RolId } = req.body;
+        const usuario = await Usuario.findByPk(req.params.id);
+        usuario.nombre = nombre;
+        usuario.email = email;
+        usuario.RolId = RolId;
+        if (password) usuario.password = password;
+        await usuario.save();
+        res.redirect('/admin/usuarios');
+    } catch (error) { res.redirect('/admin/usuarios'); }
+};
+
+exports.toggleUserStatus = async (req, res) => { 
+    try {
+        const usuario = await Usuario.findByPk(req.params.id);
+        usuario.activo = !usuario.activo;
+        await usuario.save();
+        res.redirect('/admin/usuarios');
+    } catch (error) { res.redirect('/admin/usuarios'); }
+};
+
+// =================================================================
+// 5. GESTIÓN DE MESAS
+// =================================================================
 exports.getMesas = async (req, res) => { 
     try {
-        const mesas = await Mesa.findAll();
+        const mesas = await Mesa.findAll({ order: [['numero', 'ASC']] });
         res.render('admin/mesas', { pageTitle: 'Mesas', mesas });
     } catch (error) { res.redirect('/admin'); }
 };
-// (Añade funciones de mesa: showNewMesaForm, createMesa, etc.)
-exports.showNewMesaForm = (req, res) => res.render('admin/mesa-form', { mesa: {} });
-exports.createMesa = async (req, res) => { await Mesa.create(req.body); res.redirect('/admin/mesas'); };
-exports.showEditMesaForm = async (req, res) => { /* ... */ res.redirect('/admin/mesas'); };
-exports.updateMesa = async (req, res) => { /* ... */ res.redirect('/admin/mesas'); };
-exports.deleteMesa = async (req, res) => { await Mesa.destroy({where:{id:req.params.id}}); res.redirect('/admin/mesas'); };
+
+exports.showNewMesaForm = (req, res) => res.render('admin/mesa-form', { pageTitle: 'Nueva Mesa', mesa: {} });
+
+exports.createMesa = async (req, res) => { 
+    try {
+        await Mesa.create(req.body);
+        req.flash('success_msg', 'Mesa creada.');
+        res.redirect('/admin/mesas');
+    } catch (error) {
+        res.render('admin/mesa-form', { pageTitle: 'Nueva Mesa', mesa: req.body, error: error.message });
+    }
+};
+
+exports.showEditMesaForm = async (req, res) => { 
+    try {
+        const mesa = await Mesa.findByPk(req.params.id);
+        res.render('admin/mesa-form', { pageTitle: 'Editar Mesa', mesa });
+    } catch (error) { res.redirect('/admin/mesas'); }
+};
+
+exports.updateMesa = async (req, res) => { 
+    try {
+        await Mesa.update(req.body, { where: { id: req.params.id } });
+        res.redirect('/admin/mesas');
+    } catch (error) { res.redirect('/admin/mesas'); }
+};
+
+exports.deleteMesa = async (req, res) => { 
+    try {
+        await Mesa.destroy({ where: { id: req.params.id } });
+        res.redirect('/admin/mesas');
+    } catch (error) { res.redirect('/admin/mesas'); }
+};
+
+exports.liberarTodasLasMesas = async (req, res) => {
+    await Mesa.update({ estado: 'libre' }, { where: {} });
+    res.redirect('/admin/mesas');
+};
+
+exports.getMapaEditor = async (req, res) => {
+    const mesas = await Mesa.findAll();
+    res.render('admin/mapa-editor', { pageTitle: 'Mapa', mesas });
+};
+
+exports.saveMapaLayout = async (req, res) => {
+    // Lógica del mapa (opcional si la usas)
+    res.json({ success: true });
+};
 
 // =================================================================
-// === MÓDULO DE INFORMES AVANZADOS ===
+// 6. INFORMES
 // =================================================================
-
-// 1. Mostrar el Menú Principal de Informes
 exports.getInformes = (req, res) => {
     res.render('admin/informes', { pageTitle: 'Centro de Informes' });
 };
 
-// 2. Procesar Informe de Ventas por Fechas (y "Kapex" Financiero)
 exports.generarReporteFechas = async (req, res) => {
     try {
         const { fechaInicio, fechaFin } = req.body;
-        
-        // Ajustar horas para cubrir el día completo
         const start = new Date(fechaInicio); start.setHours(0,0,0,0);
         const end = new Date(fechaFin); end.setHours(23,59,59,999);
 
         const ventas = await Pedido.findAll({
             where: {
-                estado: 'pagado', // Solo ventas reales
+                estado: 'pagado',
                 createdAt: { [Op.between]: [start, end] }
             },
             include: [{
@@ -235,7 +349,6 @@ exports.generarReporteFechas = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
-        // Cálculos financieros
         let totalIngresos = 0;
         let totalPedidos = ventas.length;
 
@@ -246,32 +359,20 @@ exports.generarReporteFechas = async (req, res) => {
                 item.componentes.forEach(comp => totalPedido += parseFloat(comp.precio_adicional || 0));
             });
             totalIngresos += totalPedido;
-            return {
-                id: pedido.id,
-                fecha: pedido.createdAt,
-                mesa: pedido.mesa_id, // Si incluiste el modelo Mesa, usa pedido.mesa.numero
-                total: totalPedido
-            };
+            return { id: pedido.id, fecha: pedido.createdAt, mesa: pedido.mesa_id, total: totalPedido };
         });
 
         res.render('admin/reporte-resultados', {
-            pageTitle: `Reporte del ${fechaInicio} al ${fechaFin}`,
+            pageTitle: `Reporte de Ventas`,
             tipo: 'ventas',
             datos: detalleVentas,
             resumen: { totalIngresos, totalPedidos }
         });
-
-    } catch (error) {
-        console.error(error);
-        req.flash('error_msg', 'Error al generar reporte.');
-        res.redirect('/admin/informes');
-    }
+    } catch (error) { res.redirect('/admin/informes'); }
 };
 
-// 3. Ranking de Comidas Más Vendidas
 exports.generarReporteTop = async (req, res) => {
     try {
-        // Traemos todos los pedidos pagados de la historia (o podrías filtrar por mes)
         const pedidos = await Pedido.findAll({
             where: { estado: 'pagado' },
             include: [{
@@ -281,40 +382,27 @@ exports.generarReporteTop = async (req, res) => {
         });
 
         const ranking = {};
-
         pedidos.forEach(pedido => {
             pedido.items.forEach(item => {
-                // 1. Contar Platos Base (Menús)
-                // Usamos el precio como identificador si no tenemos el nombre del menú guardado
-                const nombrePlato = `Menú Base ($${item.precio_unitario})`;
-                if (!ranking[nombrePlato]) ranking[nombrePlato] = { cantidad: 0, tipo: 'Plato Principal' };
+                const nombrePlato = `Menú ($${item.precio_unitario})`;
+                if (!ranking[nombrePlato]) ranking[nombrePlato] = { cantidad: 0, tipo: 'Plato' };
                 ranking[nombrePlato].cantidad++;
 
-                // 2. Contar Componentes (Proteínas, Bebidas, etc.)
                 item.componentes.forEach(comp => {
-                    const nombreComp = comp.nombre;
-                    if (!ranking[nombreComp]) ranking[nombreComp] = { cantidad: 0, tipo: 'Componente' };
-                    ranking[nombreComp].cantidad++;
+                    if (!ranking[comp.nombre]) ranking[comp.nombre] = { cantidad: 0, tipo: 'Componente' };
+                    ranking[comp.nombre].cantidad++;
                 });
             });
         });
 
-        // Convertir a array y ordenar de mayor a menor
         const rankingArray = Object.keys(ranking).map(key => ({
-            nombre: key,
-            cantidad: ranking[key].cantidad,
-            tipo: ranking[key].tipo
+            nombre: key, cantidad: ranking[key].cantidad, tipo: ranking[key].tipo
         })).sort((a, b) => b.cantidad - a.cantidad);
 
         res.render('admin/reporte-resultados', {
-            pageTitle: 'Ranking de Productos Más Vendidos',
+            pageTitle: 'Ranking de Productos',
             tipo: 'ranking',
-            datos: rankingArray,
-            resumen: null
+            datos: rankingArray
         });
-
-    } catch (error) {
-        console.error(error);
-        res.redirect('/admin/informes');
-    }
+    } catch (error) { res.redirect('/admin/informes'); }
 };

@@ -1,52 +1,83 @@
-<!-- views/cocina/partials/comandaCard.ejs -->
-
+<!-- comandaCard.ejs -->
 <div class="col-md-6 col-lg-4 mb-4 comanda-card" id="pedido-<%= pedido.id %>">
-    <div class="card h-100 shadow-sm 
-        <%= pedido.estado === 'recibido' ? 'border-danger' : 
-           pedido.estado === 'en_preparacion' ? 'border-warning' : 
-           pedido.estado === 'elaborado' ? 'border-success' : '' %>">
+    <div class="card h-100 shadow-sm border-2 
+        <%= pedido.estado === 'elaborado' ? 'border-success' : 'border-danger' %>">
 
         <div class="card-header d-flex justify-content-between align-items-center
-            <%= pedido.estado === 'recibido' ? 'bg-danger text-white' : '' %>">
-            <h5 class="mb-0 fw-bold">Mesa <%= pedido.mesa.numero %></h5>
-            <span class="badge bg-dark">#<%= pedido.id %></span>
+            <%= pedido.estado === 'elaborado' ? 'bg-success text-white' : 'bg-danger text-white' %>">
+            <h4 class="mb-0 fw-bold">Mesa <%= pedido.mesa.numero %></h4>
+            <span class="badge bg-light text-dark fw-bold">#<%= pedido.id %></span>
         </div>
 
         <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">
                 <i class="far fa-clock"></i> <%= new Date(pedido.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
             </h6>
-            <hr>
+            <hr class="mt-1 mb-2">
 
-            <ul class="list-group list-group-flush bg-transparent">
-                <% pedido.items.forEach(item => { %>
-                    <li class="list-group-item bg-transparent border-0 p-1">
-                        <strong>Cliente <%= item.cliente_numero %>:</strong>
-                        <% if (item.componentes && item.componentes.length > 0) { %>
-                            <%= item.componentes.map(c => c.nombre).join(', ') %>
-                        <% } else { %>
-                            (Sin componentes definidos)
-                        <% } %>
+            <!-- Bucle por Cliente -->
+            <% pedido.items.forEach(item => { %>
+                <div class="mb-3 border-bottom pb-2">
+                    <strong class="text-primary">Cliente <%= item.cliente_numero %></strong>
+                    
+                    <% if (item.componentes && item.componentes.length > 0) { %>
+                        <!-- 1. Agrupar componentes por Grupo -->
+                        <% 
+                            const gruposOrdenados = {};
+                            // Definir orden de prioridad para mostrar (Opcional, pero útil)
+                            const ordenPrioridad = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida', 'Postre'];
+                            
+                            item.componentes.forEach(comp => {
+                                const nombreGrupo = comp.grupo ? comp.grupo.nombre : 'Otros';
+                                if (!gruposOrdenados[nombreGrupo]) gruposOrdenados[nombreGrupo] = [];
+                                gruposOrdenados[nombreGrupo].push(comp.nombre);
+                            });
 
-                        <% if (item.notas) { %>
-                            <br><small class="fst-italic text-danger">Nota: <%= item.notas %></small>
-                        <% } %>
-                    </li>
-                <% }); %>
-            </ul>
+                            // Obtener las claves ordenadas
+                            const clavesGrupos = Object.keys(gruposOrdenados).sort((a, b) => {
+                                const indexA = ordenPrioridad.indexOf(a);
+                                const indexB = ordenPrioridad.indexOf(b);
+                                // Si ambos están en la lista, ordenar por prioridad. Si no, al final.
+                                if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                                if (indexA === -1) return 1;
+                                if (indexB === -1) return -1;
+                                return indexA - indexB;
+                            });
+                        %>
+
+                        <!-- 2. Mostrar los grupos -->
+                        <div class="ms-2 mt-1">
+                            <% clavesGrupos.forEach(grupo => { %>
+                                <div class="d-flex mb-1">
+                                    <span class="badge bg-secondary me-2 align-self-start" style="min-width: 80px;"><%= grupo %></span>
+                                    <span class="fw-bold"><%= gruposOrdenados[grupo].join(', ') %></span>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-muted fst-italic ms-2">Sin componentes</div>
+                    <% } %>
+
+                    <% if (item.notas) { %>
+                        <div class="alert alert-warning py-1 px-2 mt-1 mb-0 small">
+                            <strong>Nota:</strong> <%= item.notas %>
+                        </div>
+                    <% } %>
+                </div>
+            <% }); %>
         </div>
 
-        <div class="card-footer bg-light text-center pb-3">
-            <% if (pedido.estado === 'recibido' || pedido.estado === 'en_preparacion') { %>
-                <form action="/cocina/pedido/<%= pedido.id %>/estado" method="POST">
+        <div class="card-footer bg-white border-top-0 text-center pb-3">
+            <% if (pedido.estado !== 'elaborado') { %>
+                <form class="estado-form" action="/cocina/pedido/<%= pedido.id %>/estado" method="POST">
                     <input type="hidden" name="nuevoEstado" value="elaborado">
-                    <button type="submit" class="btn btn-warning w-100 fw-bold text-dark shadow-sm">
-                        <i class="fas fa-check-circle me-2"></i> Marcar como Listo
+                    <button type="submit" class="btn btn-warning w-100 fw-bold border-2 border-dark shadow-sm">
+                        <i class="fas fa-check"></i> TERMINAR PLATO
                     </button>
                 </form>
-            <% } else if (pedido.estado === 'elaborado') { %>
+            <% } else { %>
                 <button class="btn btn-success w-100 disabled">
-                    <i class="fas fa-bell me-2"></i> Esperando al Mesero...
+                    <i class="fas fa-bell"></i> Esperando Mesero...
                 </button>
             <% } %>
         </div>

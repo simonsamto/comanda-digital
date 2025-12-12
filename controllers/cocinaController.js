@@ -10,18 +10,23 @@ exports.showDashboard = async (req, res) => {
                 { model: Mesa, as: 'mesa', required: true },
                 {
                     model: PedidoItem, as: 'items',
-                    include: [{ model: Componente, as: 'componentes', through: { attributes: [] } }]
+                    include: [{
+                        model: Componente,
+                        as: 'componentes',
+                        through: { attributes: [] },
+                        include: [{ model: Grupo, as: 'grupo' }] // <--- ¡ESTO ES LO NUEVO!
+                    }]
                 }
             ],
             order: [['createdAt', 'ASC']]
         });
-        res.render('cocina/dashboard', { pageTitle: 'Cocina - Pedidos Pendientes', pedidos });
+        res.render('cocina/dashboard', { pageTitle: 'Cocina', pedidos });
     } catch (error) {
-        console.error('Error al cargar dashboard de cocina:', error);
-        req.flash('error_msg', 'Error al cargar los pedidos.');
+        console.error('Error cocina:', error);
         res.redirect('/');
     }
 };
+
 
 // --- Función 2: Actualizar Estado ---
 exports.updateEstadoPedido = async (req, res) => {

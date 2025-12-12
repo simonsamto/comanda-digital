@@ -5,68 +5,74 @@
         <h1>Gestionar Componentes y Grupos</h1>
         <a href="/admin/gestion-menu" class="btn btn-secondary">Volver a Menús</a>
     </div>
-    <p class="text-muted">Aquí puede crear y administrar los "ingredientes" base para sus menús.</p>
+    <p class="text-muted">Aquí puede crear los "ingredientes" base (Proteínas, Bebidas, etc.) y asignarles precios extra si aplica.</p>
 
     <div class="row">
-        <!-- ====================================================== -->
-        <!-- NUEVA COLUMNA IZQUIERDA: FORMULARIOS DE CREACIÓN      -->
-        <!-- ====================================================== -->
+        <!-- Columna Izquierda: Formularios -->
         <div class="col-md-4">
-            <h4>Añadir Nuevo</h4>
             
-            <!-- Formulario para crear un nuevo Grupo -->
-            <div class="card mb-4">
+            <!-- Formulario Grupo -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-success text-white">Nuevo Grupo</div>
                 <div class="card-body">
-                    <h5 class="card-title">Nuevo Grupo</h5>
                     <form action="/admin/grupos" method="POST">
                         <div class="mb-3">
-                            <label for="nombreGrupo" class="form-label">Nombre del Grupo</label>
-                            <input type="text" class="form-control" id="nombreGrupo" name="nombre" placeholder="Ej: Proteínas, Postres" required>
+                            <label class="form-label">Nombre del Grupo</label>
+                            <input type="text" class="form-control" name="nombre" placeholder="Ej: Bebidas" required>
                         </div>
                         <button type="submit" class="btn btn-success w-100">Crear Grupo</button>
                     </form>
                 </div>
             </div>
 
-            <!-- Formulario para crear un nuevo Componente -->
-            <div class="card">
+            <!-- Formulario Componente -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">Nuevo Componente</div>
                 <div class="card-body">
-                    <h5 class="card-title">Nuevo Componente</h5>
                     <form action="/admin/componentes" method="POST">
                         <div class="mb-3">
-                            <label for="nombreComponente" class="form-label">Nombre del Componente</label>
-                            <input type="text" class="form-control" id="nombreComponente" name="nombre" placeholder="Ej: Pollo a la Plancha" required>
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" name="nombre" placeholder="Ej: Coca Cola" required>
                         </div>
+                        
                         <div class="mb-3">
-                            <label for="grupoComponente" class="form-label">Grupo al que pertenece</label>
-                            <select class="form-select" id="grupoComponente" name="grupo_id" required>
-                                <option value="" selected disabled>Seleccione un grupo...</option>
+                            <label class="form-label">Grupo</label>
+                            <select class="form-select" name="grupo_id" required>
+                                <option value="" selected disabled>Seleccione...</option>
                                 <% grupos.forEach(grupo => { %>
                                     <option value="<%= grupo.id %>"><%= grupo.nombre %></option>
                                 <% }); %>
                             </select>
                         </div>
+
+                        <!-- CAMPO NUEVO: PRECIO ADICIONAL -->
+                        <div class="mb-3">
+                            <label class="form-label">Precio Adicional</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="precio_adicional" value="0" min="0" step="100">
+                            </div>
+                            <div class="form-text small">Dejar en 0 si está incluido en el menú base.</div>
+                        </div>
+
                         <button type="submit" class="btn btn-primary w-100">Crear Componente</button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- ====================================================== -->
-        <!-- COLUMNA DERECHA: LISTA DE ELEMENTOS EXISTENTES         -->
-        <!-- (Tu código anterior, ahora en la columna derecha)       -->
-        <!-- ====================================================== -->
+        <!-- Columna Derecha: Lista -->
         <div class="col-md-8">
-            <h4>Componentes Existentes</h4>
+            <h4>Inventario Actual</h4>
             <% if (grupos.length > 0) { %>
                 <% grupos.forEach(grupo => { %>
-                    <div class="card mb-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card mb-3 border-secondary">
+                        <div class="card-header d-flex justify-content-between align-items-center bg-light">
                             <strong><%= grupo.nombre %></strong>
                             <div>
-                                <a href="/admin/grupos/editar/<%= grupo.id %>" class="btn btn-warning btn-sm">Editar Grupo</a>
-                                <form action="/admin/grupos/eliminar/<%= grupo.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de que desea eliminar este grupo y TODOS sus componentes?');">
-                                    <button type="submit" class="btn btn-danger btn-sm">Eliminar Grupo</button>
+                                <a href="/admin/grupos/editar/<%= grupo.id %>" class="btn btn-outline-secondary btn-sm">Editar</a>
+                                <form action="/admin/grupos/eliminar/<%= grupo.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar grupo?');">
+                                    <button class="btn btn-outline-danger btn-sm">X</button>
                                 </form>
                             </div>
                         </div>
@@ -74,23 +80,28 @@
                             <% if (grupo.componentes.length > 0) { %>
                                 <% grupo.componentes.forEach(componente => { %>
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <%= componente.nombre %>
                                         <div>
-                                            <a href="/admin/componentes/editar/<%= componente.id %>" class="btn btn-outline-warning btn-sm">Editar</a>
-                                            <form action="/admin/componentes/eliminar/<%= componente.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de que desea eliminar este componente?');">
-                                                <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+                                            <%= componente.nombre %>
+                                            <% if (componente.precio_adicional > 0) { %>
+                                                <span class="badge bg-success ms-2">+$<%= parseFloat(componente.precio_adicional).toLocaleString('es-CO') %></span>
+                                            <% } %>
+                                        </div>
+                                        <div>
+                                            <a href="/admin/componentes/editar/<%= componente.id %>" class="btn btn-sm btn-link text-decoration-none">Editar</a>
+                                            <form action="/admin/componentes/eliminar/<%= componente.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar?');">
+                                                <button class="btn btn-sm btn-link text-danger text-decoration-none">Eliminar</button>
                                             </form>
                                         </div>
                                     </li>
                                 <% }); %>
                             <% } else { %>
-                                 <li class="list-group-item text-muted fst-italic">No hay componentes en este grupo.</li>
+                                 <li class="list-group-item text-muted fst-italic small">Vacío</li>
                             <% } %>
                         </ul>
                     </div>
                 <% }); %>
             <% } else { %>
-                <div class="alert alert-info">Aún no se han creado grupos. Comience creando uno a la izquierda.</div>
+                <div class="alert alert-info">No hay grupos creados.</div>
             <% } %>
         </div>
     </div>
