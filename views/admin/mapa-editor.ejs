@@ -2,19 +2,16 @@
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 
 <style>
-    /* El lienzo del restaurante */
     #restaurante-canvas {
         width: 100%;
         height: 600px;
         background-color: #f0f2f5;
         border: 2px dashed #ccc;
         position: relative;
-        overflow: hidden; /* Para que no se salgan */
+        overflow: hidden;
         background-image: radial-gradient(#dee2e6 1px, transparent 1px);
         background-size: 20px 20px;
     }
-
-    /* La mesa arrastrable */
     .mesa-draggable {
         position: absolute;
         background-color: #fff;
@@ -26,10 +23,9 @@
         flex-direction: column;
         user-select: none;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        touch-action: none; /* Importante para interact.js */
+        touch-action: none;
         cursor: grab;
     }
-    
     .mesa-draggable:active { cursor: grabbing; border-color: #0b5ed7; box-shadow: 0 8px 12px rgba(0,0,0,0.2); }
     .mesa-info { font-weight: bold; pointer-events: none; }
     .mesa-capacidad { font-size: 0.8rem; color: #6c757d; pointer-events: none; }
@@ -45,19 +41,17 @@
     </div>
 
     <div class="alert alert-info py-2">
-        <small><i class="fas fa-info-circle"></i> Arrastra las mesas para ubicarlas. Tira de los bordes para cambiar el tamaño.</small>
+        <small><i class="fas fa-info-circle"></i> Arrastra las mesas. Tira de los bordes para cambiar tamaño.</small>
     </div>
 
-    <!-- EL LIENZO -->
     <div id="restaurante-canvas">
         <% mesas.forEach(mesa => { %>
             <div class="mesa-draggable" 
                  id="mesa-<%= mesa.id %>"
                  data-id="<%= mesa.id %>"
-                 style="transform: translate(<%= mesa.pos_x %>px, <%= mesa.pos_y %>px); width: <%= mesa.ancho %>px; height: <%= mesa.alto %>px;"
-                 data-x="<%= mesa.pos_x %>" 
-                 data-y="<%= mesa.pos_y %>">
-                
+                 style="transform: translate(<%= mesa.pos_x || 0 %>px, <%= mesa.pos_y || 0 %>px); width: <%= mesa.ancho || 120 %>px; height: <%= mesa.alto || 120 %>px;"
+                 data-x="<%= mesa.pos_x || 0 %>" 
+                 data-y="<%= mesa.pos_y || 0 %>">
                 <div class="mesa-info">Mesa <%= mesa.numero %></div>
                 <div class="mesa-capacidad"><i class="fas fa-users"></i> <%= mesa.capacidad %></div>
             </div>
@@ -66,14 +60,10 @@
 </div>
 
 <script>
-    // 1. Configurar Interact.js para Arrastrar y Redimensionar
     interact('.mesa-draggable')
         .draggable({
             modifiers: [
-                interact.modifiers.restrictRect({
-                    restriction: 'parent',
-                    endOnly: true
-                })
+                interact.modifiers.restrictRect({ restriction: 'parent', endOnly: true })
             ],
             listeners: { move: dragMoveListener }
         })
@@ -112,7 +102,6 @@
         target.setAttribute('data-y', y)
     }
 
-    // 2. Lógica de Guardado (AJAX)
     document.getElementById('btn-guardar').addEventListener('click', async () => {
         const btn = document.getElementById('btn-guardar');
         btn.disabled = true;
@@ -120,12 +109,14 @@
 
         const mesasData = [];
         document.querySelectorAll('.mesa-draggable').forEach(el => {
+            const x = parseFloat(el.getAttribute('data-x')) || 0;
+            const y = parseFloat(el.getAttribute('data-y')) || 0;
             mesasData.push({
                 id: el.dataset.id,
-                x: el.dataset.x || 0,
-                y: el.dataset.y || 0,
-                w: el.style.width.replace('px', ''),
-                h: el.style.height.replace('px', '')
+                x: Math.round(x),
+                y: Math.round(y),
+                w: Math.round(parseFloat(el.style.width)),
+                h: Math.round(parseFloat(el.style.height))
             });
         });
 
@@ -138,16 +129,23 @@
             const result = await response.json();
             
             if(result.success) {
-                alert('¡Mapa guardado exitosamente!');
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+                btn.innerHTML = '<i class="fas fa-check"></i> ¡Guardado!';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-save"></i> Guardar Distribución';
+                    btn.classList.add('btn-success');
+                    btn.classList.remove('btn-primary');
+                    btn.disabled = false;
+                }, 1000);
             } else {
-                alert('Error al guardar.');
+                alert('Error del servidor');
+                btn.disabled = false;
             }
         } catch (error) {
             console.error(error);
-            alert('Error de conexión.');
-        } finally {
+            alert('Error de conexión');
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Guardar Distribución';
         }
     });
 </script>

@@ -3,9 +3,7 @@ const { Usuario, Rol, Mesa, Menu, Grupo, Componente, Pedido, PedidoItem, sequeli
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
-// =================================================================
-// 1. DASHBOARD PRINCIPAL (KPIs Y GRÁFICOS)
-// =================================================================
+// 1. DASHBOARD
 exports.showDashboard = async (req, res) => {
     try {
         const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
@@ -56,9 +54,7 @@ exports.showDashboard = async (req, res) => {
     }
 };
 
-// =================================================================
-// 2. GESTIÓN DE MENÚS (CRUD)
-// =================================================================
+// 2. GESTIÓN DE MENÚS
 exports.getGestionMenu = async (req, res) => {
     try {
         const menus = await Menu.findAll({ order: [['id', 'ASC']] });
@@ -124,9 +120,7 @@ exports.saveConfigurarMenu = async (req, res) => {
     } catch (error) { res.redirect('/admin/gestion-menu'); }
 };
 
-// =================================================================
-// 3. GESTIÓN DE COMPONENTES Y GRUPOS (CON PRECIOS EXTRA)
-// =================================================================
+// 3. GESTIÓN COMPONENTES Y GRUPOS
 exports.getGestionComponentes = async (req, res) => {
     try {
         const grupos = await Grupo.findAll({
@@ -207,9 +201,7 @@ exports.deleteGrupo = async (req, res) => {
     try { await Grupo.destroy({ where: { id: req.params.id } }); res.redirect('/admin/gestion-componentes'); } catch(e){ res.redirect('/admin/gestion-componentes'); }
 };
 
-// =================================================================
 // 4. GESTIÓN DE USUARIOS
-// =================================================================
 exports.getUsuarios = async (req, res) => { 
     try {
         const usuarios = await Usuario.findAll({ include: { model: Rol, as: 'rol' } });
@@ -266,9 +258,7 @@ exports.toggleUserStatus = async (req, res) => {
     } catch (error) { res.redirect('/admin/usuarios'); }
 };
 
-// =================================================================
-// 5. GESTIÓN DE MESAS
-// =================================================================
+// 5. GESTIÓN DE MESAS Y MAPA (AQUÍ ESTÁ LA CORRECCIÓN CLAVE)
 exports.getMesas = async (req, res) => { 
     try {
         const mesas = await Mesa.findAll({ order: [['numero', 'ASC']] });
@@ -316,17 +306,38 @@ exports.liberarTodasLasMesas = async (req, res) => {
 
 exports.getMapaEditor = async (req, res) => {
     const mesas = await Mesa.findAll();
-    res.render('admin/mapa-editor', { pageTitle: 'Mapa', mesas });
+    res.render('admin/mapa-editor', { pageTitle: 'Diseñador de Mapa', mesas });
 };
 
+// --- FUNCIÓN CORREGIDA PARA GUARDAR EL MAPA ---
 exports.saveMapaLayout = async (req, res) => {
-    // Lógica del mapa (opcional si la usas)
-    res.json({ success: true });
+    try {
+        const mesasPositions = req.body; 
+        console.log(">>> GUARDANDO MAPA:", JSON.stringify(mesasPositions));
+
+        if (!Array.isArray(mesasPositions)) return res.status(400).json({ success: false });
+        
+        let actualizados = 0;
+        for (const pos of mesasPositions) {
+            const id = parseInt(pos.id);
+            if (!isNaN(id)) {
+                await Mesa.update({
+                    pos_x: parseInt(pos.x) || 0,
+                    pos_y: parseInt(pos.y) || 0,
+                    ancho: parseInt(pos.w) || 120,
+                    alto: parseInt(pos.h) || 120
+                }, { where: { id: id } });
+                actualizados++;
+            }
+        }
+        res.json({ success: true, message: `Mapa guardado. ${actualizados} mesas.` });
+    } catch (error) {
+        console.error("Error FATAL al guardar mapa:", error);
+        res.status(500).json({ success: false });
+    }
 };
 
-// =================================================================
 // 6. INFORMES
-// =================================================================
 exports.getInformes = (req, res) => {
     res.render('admin/informes', { pageTitle: 'Centro de Informes' });
 };
