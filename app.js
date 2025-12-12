@@ -68,13 +68,11 @@ io.on('connection', (socket) => {
 // --- ARRANQUE (¡ESTA ES LA PARTE CRÍTICA!) ---
 const PORT = process.env.PORT || 3000;
 
-db.sequelize.sync({ alter: true }).then(() => {
+// Si estamos en producción (Render), no usamos alter: true para evitar errores con TiDB
+const syncOptions = process.env.NODE_ENV === 'production' ? {} : { alter: true };
+
+db.sequelize.sync(syncOptions).then(() => {
     console.log('✅ Base de datos sincronizada.');
-    
-    // 5. ¡USAMOS server.listen, NO app.listen!
-    // Si usas app.listen, Socket.IO NO funcionará.
-
-
     server.listen(PORT, () => {
         console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     });
