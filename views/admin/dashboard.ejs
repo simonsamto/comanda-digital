@@ -1,52 +1,164 @@
 <%- include('../partials/header') %>
 
-<main class="container mt-4">
-    <div class="bg-light p-5 rounded">
-        <h1>Bienvenido al Panel de Administrador</h1>
-        <p class="lead">Desde aquí podrás gestionar todos los aspectos de tu restaurante.</p>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Gestión de Personal</h5>
-                    <p class="card-text">Añade, edita y gestiona los roles de tus empleados.</p>
-                    <a href="/admin/usuarios" class="btn btn-primary">Gestionar Usuarios</a>
-                </div>
-            </div>
+<div class="container mt-4">
+    
+    <!-- Encabezado con Botones Rápidos -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold text-dark"><i class="fas fa-chart-line text-primary"></i> Resumen del Día</h1>
+            <p class="text-muted mb-0">Estadísticas en tiempo real de hoy.</p>
         </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Configuración del Restaurante</h5>
-                    <p class="card-text">Define las mesas disponibles en tu local.</p>
-                    <a href="/admin/mesas" class="btn btn-primary">Gestionar Mesas</a>
-                </div>
-            </div>
+        <div class="btn-group">
+            <a href="/admin/gestion-menu" class="btn btn-outline-primary"><i class="fas fa-utensils"></i> Menús</a>
+            
+            <!-- ESTE ES EL BOTÓN NUEVO QUE FALTABA -->
+            <a href="/admin/informes" class="btn btn-outline-success"><i class="fas fa-chart-bar"></i> Otros Informes</a>
+            
+            <a href="/admin/usuarios" class="btn btn-outline-dark"><i class="fas fa-users"></i> Usuarios</a>
+            <a href="/admin/mesas" class="btn btn-outline-secondary"><i class="fas fa-chair"></i> Mesas</a>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
+    <!-- TARJETAS DE INDICADORES (KPIs) -->
+    <div class="row mb-4">
+        <!-- Ventas Totales -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">
                 <div class="card-body">
-                    <h5 class="card-title">Menú Digital</h5>
-                    <p class="card-text">Crea y edita las categorías y productos de tu menú.</p>
-                    <a href="/admin/menu" class="btn btn-primary">Gestionar Menú</a>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-2 opacity-75">Ventas Totales</h6>
+                            <h2 class="display-6 fw-bold">$<%= totalDinero.toLocaleString('es-CO') %></h2>
+                        </div>
+                        <i class="fas fa-dollar-sign fa-3x opacity-50"></i>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Análisis y Reportes</h5>
-                    <p class="card-text">Visualiza las ventas y el rendimiento de tu negocio.</p>
-                    <a href="/admin/reportes" class="btn btn-secondary disabled" tabindex="-1" aria-disabled="true">Ver Reportes (Próximamente)</a>
+
+        <!-- Pedidos Pagados -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 bg-white">
+                <div class="card-body border-start border-5 border-primary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-2 text-muted">Mesas Cobradas</h6>
+                            <h2 class="display-6 fw-bold text-dark"><%= cantidadPedidos %></h2>
+                        </div>
+                        <i class="fas fa-receipt fa-3x text-primary opacity-25"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Platos Vendidos -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 bg-white">
+                <div class="card-body border-start border-5 border-warning">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-2 text-muted">Almuerzos Vendidos</h6>
+                            <h2 class="display-6 fw-bold text-dark"><%= platosVendidos %></h2>
+                        </div>
+                        <i class="fas fa-drumstick-bite fa-3x text-warning opacity-25"></i>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</main>
+
+    <!-- SECCIÓN DE GRÁFICOS -->
+    <div class="row">
+        <!-- Gráfico 1: Ventas por Tipo (Dona) -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 border-bottom-0">
+                    <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-pie me-2"></i>Ventas por Tipo</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 250px;">
+                        <canvas id="ventasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico 2: Estado del Flujo (Pie) -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 border-bottom-0">
+                    <h5 class="mb-0 fw-bold text-info"><i class="fas fa-tasks me-2"></i>Estado Actual del Servicio</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 250px;">
+                        <canvas id="estadosChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LIBRERÍA CHART.JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- GRÁFICO 1: VENTAS (DONA) ---
+        const labelsVentas = <%- chartLabels %>;
+        const dataVentas = <%- chartData %>;
+        
+        if (dataVentas.some(v => v > 0)) {
+            new Chart(document.getElementById('ventasChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labelsVentas,
+                    datasets: [{
+                        data: dataVentas,
+                        backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        } else {
+            // Mensaje si no hay datos
+            const ctx = document.getElementById('ventasChart').getContext('2d');
+            ctx.font = "14px Arial";
+            ctx.fillText("No hay ventas registradas hoy", 10, 50);
+        }
+
+        // --- GRÁFICO 2: ESTADOS (PIE) ---
+        const labelsEstados = <%- estadosLabels %>;
+        const dataEstados = <%- estadosData %>;
+
+        if (dataEstados.some(val => val > 0)) {
+            new Chart(document.getElementById('estadosChart'), {
+                type: 'pie',
+                data: {
+                    labels: labelsEstados,
+                    datasets: [{
+                        data: dataEstados,
+                        backgroundColor: [
+                            '#dc3545', // Rojo: En Cocina
+                            '#0dcaf0', // Azul: Para Recoger
+                            '#ffc107', // Amarillo: En Mesa
+                            '#198754'  // Verde: Finalizado
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: { 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { position: 'right' } } 
+                }
+            });
+        } else {
+            const ctx = document.getElementById('estadosChart').getContext('2d');
+            ctx.font = "14px Arial";
+            ctx.fillText("Sin actividad en el servicio", 10, 50);
+        }
+    });
+</script>
 
 <%- include('../partials/footer') %>

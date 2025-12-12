@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
         const mesas = await Mesa.findAll({ order: [['numero', 'ASC']] });
         res.render('mesero/dashboard', { mesas, pageTitle: 'Mapa de Mesas' });
     } catch (error) {
-        console.error("Error al cargar las mesas:", error);
+        console.error(error);
         res.status(500).send("Error interno.");
     }
 });
@@ -32,10 +32,7 @@ router.get('/tomar-pedido/:mesaId', async (req, res) => {
         const { cantidadClientes } = req.query;
 
         const mesa = await Mesa.findByPk(mesaId);
-        if (!mesa) {
-            req.flash('error_msg', 'Mesa no encontrada.');
-            return res.redirect('/mesero');
-        }
+        if (!mesa) return res.redirect('/mesero');
 
         const menusActivos = await Menu.findAll({ where: { activo: true } });
         if (menusActivos.length === 0) {
@@ -55,14 +52,13 @@ router.get('/tomar-pedido/:mesaId', async (req, res) => {
     }
 });
 
-// RUTA 4: PROCESAR MENÚS Y MOSTRAR COMPONENTES
+// RUTA 4: PROCESAR MENÚS
 router.post('/seleccionar-menus-clientes/:mesaId', async (req, res) => {
     try {
         const { mesaId } = req.params;
         const { cantidadClientes } = req.body;
         const numClientes = parseInt(cantidadClientes);
         const mesa = await Mesa.findByPk(mesaId);
-
         const clientesConMenus = [];
 
         for (let i = 1; i <= numClientes; i++) {
@@ -103,22 +99,15 @@ router.post('/seleccionar-menus-clientes/:mesaId', async (req, res) => {
     }
 });
 
-// =========================================================================
-// RUTA 5: GUARDAR PEDIDO (CORREGIDA: mesa_id y pedido_id)
-// =========================================================================
+// RUTA 5: GUARDAR PEDIDO (CON PRECIO BASE)
 router.post('/tomar-pedido/:mesaId', async (req, res) => {
     const { mesaId } = req.params;
     const { clientes } = req.body;
 
-    if (!clientes) {
-        req.flash('error_msg', 'Datos vacíos.');
-        return res.redirect('/mesero');
-    }
+    if (!clientes) return res.redirect('/mesero');
 
     const t = await sequelize.transaction();
     try {
-        // --- CORRECCIÓN CRÍTICA AQUÍ ---
-        // Usamos 'mesa_id' (con guion bajo)
         const nuevoPedido = await Pedido.create({ 
             mesa_id: parseInt(mesaId), 
             estado: 'recibido' 
@@ -126,17 +115,21 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
         
         for (const idx in clientes) {
             const clienteData = clientes[idx];
+            
+            // 1. BUSCAR EL PRECIO DEL MENÚ SELECCIONADO
+            const menuSeleccionado = await Menu.findByPk(clienteData.menuId);
+            const precioBase = menuSeleccionado ? menuSeleccionado.precio_base : 0;
+
             const componentesIds = Object.values(clienteData).flat()
                 .filter(val => !isNaN(parseInt(val)) && val !== clienteData.menuId && val !== clienteData.notas)
                 .map(id => parseInt(id));
 
             if (componentesIds.length > 0) {
-                // --- CORRECCIÓN CRÍTICA AQUÍ TAMBIÉN ---
-                // Usamos 'pedido_id' (con guion bajo)
                 const nuevoItem = await PedidoItem.create({
                     pedido_id: nuevoPedido.id,
                     cliente_numero: parseInt(idx) + 1,
-                    notas: clienteData.notas || ''
+                    notas: clienteData.notas || '',
+                    precio_unitario: precioBase // <--- AQUÍ GUARDAMOS EL PRECIO
                 }, { transaction: t });
                 
                 await nuevoItem.setComponentes(componentesIds, { transaction: t });
@@ -159,59 +152,26 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
 
     } catch (error) {
         await t.rollback();
-        console.error("ERROR AL GUARDAR:", error); // Esto te dirá si hay otro fallo
+        console.error("Error al guardar:", error);
         req.flash('error_msg', 'Error al guardar.');
         res.redirect('/mesero');
     }
 });
 
-// =================================================================
-// RUTA 6: CONFIRMAR ENTREGA (Infalible y Corregida: mesa_id)
-// =================================================================
+// RUTA 6: ENTREGAR PEDIDO
 router.post('/entregar-pedido/:mesaId', async (req, res) => {
     const { mesaId } = req.params;
-    
-    console.log(`>>> INTENTANDO ENTREGAR PEDIDO MESA ${mesaId}`);
-
     try {
-        // 1. Intentar buscar y actualizar pedidos activos
-        // CORRECCIÓN: Usamos 'mesa_id' (con guion bajo)
-        const pedidosActivos = await Pedido.findAll({
-            where: { 
-                mesa_id: mesaId, 
-                estado: ['recibido', 'en_preparacion', 'elaborado'] 
-            }
-        });
-
-        if (pedidosActivos.length > 0) {
-            console.log(`--- Encontrados ${pedidosActivos.length} pedidos activos. Actualizando...`);
-            // CORRECCIÓN: Usamos 'mesa_id' aquí también
-            await Pedido.update(
-                { estado: 'entregado' },
-                { 
-                    where: { 
-                        mesa_id: mesaId, 
-                        estado: ['recibido', 'en_preparacion', 'elaborado'] 
-                    } 
-                }
-            );
-        } else {
-            console.log("--- [ADVERTENCIA] No se encontraron pedidos, forzando estado de mesa.");
-        }
-
-        // 2. Cambiar estado de MESA a 'por_cobrar'
+        await Pedido.update({ estado: 'entregado' }, { where: { mesa_id: mesaId, estado: ['elaborado', 'recibido'] } });
         await Mesa.update({ estado: 'por_cobrar' }, { where: { id: mesaId } });
-
-        // 3. Notificar al cajero
+        
         const io = req.app.get('socketio');
         if (io) io.emit('mesa_por_cobrar', { mesaId });
 
-        req.flash('success_msg', '¡Mesa liberada para cobro!');
+        req.flash('success_msg', 'Mesa liberada para cobro.');
         res.redirect('/mesero');
-
     } catch (error) {
-        console.error("--- [ERROR FATAL] Error al entregar:", error);
-        req.flash('error_msg', 'Error al procesar la entrega.');
+        console.error(error);
         res.redirect('/mesero');
     }
 });

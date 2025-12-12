@@ -1,0 +1,51 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-chart-bar text-primary"></i> Centro de Informes</h1>
+        <a href="/admin" class="btn btn-secondary">Volver al Dashboard</a>
+    </div>
+
+    <div class="row">
+        <!-- REPORTE 1 y 2: VENTAS POR FECHA (KAPEX) -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Histórico de Ventas / Kapex</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Seleccione un rango de fechas para ver el detalle financiero de ventas y flujo de caja.</p>
+                    <form action="/admin/informes/ventas" method="POST">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">Desde</span>
+                            <input type="date" class="form-control" name="fechaInicio" required>
+                        </div>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">Hasta</span>
+                            <input type="date" class="form-control" name="fechaFin" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Generar Reporte</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- REPORTE 3: PRODUCTOS MÁS VENDIDOS -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Ranking de Productos</h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <p class="text-muted">Descubre cuáles son tus platos estrella y qué componentes (bebidas, proteínas) prefieren tus clientes.</p>
+                    <div class="text-center">
+                        <i class="fas fa-chart-pie fa-5x text-success opacity-25 mb-3"></i>
+                    </div>
+                    <a href="/admin/informes/top" class="btn btn-success w-100">Ver Ranking</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

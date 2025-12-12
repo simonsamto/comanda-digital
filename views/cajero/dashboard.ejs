@@ -1,37 +1,61 @@
 <%- include('../partials/header') %>
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between mb-4">
-        <h1><i class="fas fa-cash-register"></i> Caja</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-cash-register text-warning"></i> Caja</h1>
         <a href="/cajero" class="btn btn-outline-dark"><i class="fas fa-sync"></i> Actualizar</a>
     </div>
 
+    <%- include('../partials/messages') %>
+
     <div class="row">
         <% if (pedidos.length === 0) { %>
-            <div class="col-12 text-center py-5 text-muted">
+            <div class="col-12 text-center py-5 text-muted bg-light rounded shadow-sm">
+                <i class="fas fa-check-circle fa-4x mb-3 text-success"></i>
                 <h3>No hay mesas pendientes de cobro</h3>
-                <p>Las mesas aparecerán aquí cuando el mesero entregue el pedido.</p>
             </div>
         <% } else { %>
             <% pedidos.forEach(pedido => { %>
-                <div class="col-md-4 mb-4">
-                    <div class="card border-warning shadow">
-                        <div class="card-header bg-warning text-dark d-flex justify-content-between">
-                            <h4 class="mb-0 fw-bold">Mesa <%= pedido.mesa.numero %></h4>
+                
+                <!-- CÁLCULO DEL TOTAL CORRECTO -->
+                <% 
+                    let totalPedido = 0;
+                    let itemsCount = 0;
+                    
+                    pedido.items.forEach(item => {
+                        itemsCount++;
+                        // 1. Sumamos el precio base guardado en la BD
+                        totalPedido += parseFloat(item.precio_unitario || 0);
+
+                        // 2. Sumamos los componentes extra
+                        if (item.componentes) {
+                            item.componentes.forEach(comp => {
+                                totalPedido += parseFloat(comp.precio_adicional || 0);
+                            });
+                        }
+                    });
+                %>
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card border-warning shadow h-100">
+                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0 fw-bold"><i class="fas fa-chair"></i> Mesa <%= pedido.mesa.numero %></h4>
                             <span class="badge bg-dark">#<%= pedido.id %></span>
                         </div>
-                        <div class="card-body">
-                            <h5 class="card-title text-center my-3">
-                                Total a Pagar: <span class="text-success">$XXX</span>
-                            </h5>
-                            <!-- Aquí podrías listar los items si quisieras -->
-                            <p class="text-center text-muted small">Estado: Por Cobrar</p>
-                            
-                            <form action="/cajero/cobrar/<%= pedido.id %>" method="POST">
-                                <button type="submit" class="btn btn-success w-100 btn-lg">
-                                    <i class="fas fa-check-double"></i> Cobrar y Liberar
-                                </button>
-                            </form>
+                        <div class="card-body d-flex flex-column">
+                            <div class="text-center mb-4">
+                                <h6 class="text-muted">Total a Pagar</h6>
+                                <h1 class="display-4 fw-bold text-success">$<%= totalPedido.toLocaleString('es-CO') %></h1>
+                                <span class="badge bg-secondary"><%= itemsCount %> almuerzos/items</span>
+                            </div>
+
+                            <div class="mt-auto">
+                                <form action="/cajero/cobrar/<%= pedido.id %>" method="POST">
+                                    <button type="submit" class="btn btn-success w-100 btn-lg py-3" onclick="return confirm('¿Confirmar pago?');">
+                                        <i class="fas fa-hand-holding-usd me-2"></i> COBRAR
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -43,7 +67,6 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    // Si un mesero entrega un plato, actualizar esta pantalla automáticamente
     socket.on('mesa_por_cobrar', () => location.reload());
 </script>
 
