@@ -1,163 +1,181 @@
 <%- include('../partials/header') %>
-
-<div class="container mt-4">
-    
-    <!-- Encabezado con Botones Rápidos -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="fw-bold text-dark"><i class="fas fa-chart-line text-primary"></i> Resumen del Día</h1>
-            <p class="text-muted mb-0">Estadísticas en tiempo real de hoy.</p>
-        </div>
-        <div class="btn-group">
-            <a href="/admin/gestion-menu" class="btn btn-outline-primary"><i class="fas fa-utensils"></i> Menús</a>
-            
-            <!-- ESTE ES EL BOTÓN NUEVO QUE FALTABA -->
-            <a href="/admin/informes" class="btn btn-outline-success"><i class="fas fa-chart-bar"></i> Otros Informes</a>
-            
-            <a href="/admin/usuarios" class="btn btn-outline-dark"><i class="fas fa-users"></i> Usuarios</a>
-            <a href="/admin/mesas" class="btn btn-outline-secondary"><i class="fas fa-chair"></i> Mesas</a>
-        </div>
-    </div>
-
-    <!-- TARJETAS DE INDICADORES (KPIs) -->
-    <div class="row mb-4">
-        <!-- Ventas Totales -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase mb-2 opacity-75">Ventas Totales</h6>
-                            <h2 class="display-6 fw-bold">$<%= totalDinero.toLocaleString('es-CO') %></h2>
-                        </div>
-                        <i class="fas fa-dollar-sign fa-3x opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pedidos Pagados -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100 bg-white">
-                <div class="card-body border-start border-5 border-primary">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase mb-2 text-muted">Mesas Cobradas</h6>
-                            <h2 class="display-6 fw-bold text-dark"><%= cantidadPedidos %></h2>
-                        </div>
-                        <i class="fas fa-receipt fa-3x text-primary opacity-25"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Platos Vendidos -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100 bg-white">
-                <div class="card-body border-start border-5 border-warning">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase mb-2 text-muted">Almuerzos Vendidos</h6>
-                            <h2 class="display-6 fw-bold text-dark"><%= platosVendidos %></h2>
-                        </div>
-                        <i class="fas fa-drumstick-bite fa-3x text-warning opacity-25"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SECCIÓN DE GRÁFICOS -->
-    <div class="row">
-        <!-- Gráfico 1: Ventas por Tipo (Dona) -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white py-3 border-bottom-0">
-                    <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-pie me-2"></i>Ventas por Tipo</h5>
-                </div>
-                <div class="card-body">
-                    <div style="height: 250px;">
-                        <canvas id="ventasChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Gráfico 2: Estado del Flujo (Pie) -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white py-3 border-bottom-0">
-                    <h5 class="mb-0 fw-bold text-info"><i class="fas fa-tasks me-2"></i>Estado Actual del Servicio</h5>
-                </div>
-                <div class="card-body">
-                    <div style="height: 250px;">
-                        <canvas id="estadosChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- LIBRERÍA CHART.JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<div class="container-fluid mt-4">
+    <h1 class="mb-4 text-center fw-bold text-secondary">Tablero de Control Gerencial</h1>
+
+    <!-- 1. KPIs SUPERIORES -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white text-center p-3 shadow-sm">
+                <h3>$<%= kpis.ventasHoy.toLocaleString() %></h3>
+                <small>Ventas Hoy</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white text-center p-3 shadow-sm">
+                <h3><%= kpis.pedidosHoy %></h3>
+                <small>Pedidos Pagados</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white text-center p-3 shadow-sm">
+                <h3>$<%= kpis.ticketPromedio.toLocaleString(undefined, {maximumFractionDigits:0}) %></h3>
+                <small>Ticket Promedio</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white text-center p-3 shadow-sm">
+                <!-- Espacio para otro KPI futuro -->
+                <h3>--</h3>
+                <small>Meta del Día</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 1: LOS 3 GRANDES -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">1. Ventas por Hora (Picos de Demanda)</div>
+                <div class="card-body"><canvas id="chartHora"></canvas></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">2. Estado Actual (En Vivo)</div>
+                <div class="card-body"><canvas id="chartEstados"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 2: PRODUCTOS -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">3. Top 5 Platos</div>
+                <div class="card-body"><canvas id="chartPlatos"></canvas></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">4. Top 5 Bebidas</div>
+                <div class="card-body"><canvas id="chartBebidas"></canvas></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">5. Hoy vs. Ayer</div>
+                <div class="card-body"><canvas id="chartComparativo"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 3: MESAS Y RENDIMIENTO -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">6. Mesas Más Rentables ($)</div>
+                <div class="card-body"><canvas id="chartMesas"></canvas></div>
+            </div>
+        </div>
+        <!-- Aquí puedes añadir el gráfico 7, 8, 9... -->
+        <div class="col-md-6">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">7. Distribución de Métodos de Pago (Ejemplo)</div>
+                <div class="card-body d-flex align-items-center justify-content-center text-muted">
+                    (Requiere módulo de pagos detallado)
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // --- GRÁFICO 1: VENTAS (DONA) ---
-        const labelsVentas = <%- chartLabels %>;
-        const dataVentas = <%- chartData %>;
-        
-        if (dataVentas.some(v => v > 0)) {
-            new Chart(document.getElementById('ventasChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: labelsVentas,
-                    datasets: [{
-                        data: dataVentas,
-                        backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-            });
-        } else {
-            // Mensaje si no hay datos
-            const ctx = document.getElementById('ventasChart').getContext('2d');
-            ctx.font = "14px Arial";
-            ctx.fillText("No hay ventas registradas hoy", 10, 50);
-        }
+    // --- 1. VENTAS POR HORA ---
+    new Chart(document.getElementById('chartHora'), {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+            datasets: [{
+                label: 'Ventas ($)',
+                data: <%- graficos.ventasHora %>,
+                borderColor: '#4e73df',
+                fill: true,
+                backgroundColor: 'rgba(78, 115, 223, 0.1)'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
 
-        // --- GRÁFICO 2: ESTADOS (PIE) ---
-        const labelsEstados = <%- estadosLabels %>;
-        const dataEstados = <%- estadosData %>;
+    // --- 2. ESTADOS ---
+    new Chart(document.getElementById('chartEstados'), {
+        type: 'doughnut',
+        data: {
+            labels: <%- graficos.estados.labels %>,
+            datasets: [{
+                data: <%- graficos.estados.data %>,
+                backgroundColor: ['#dc3545', '#0dcaf0', '#ffc107', '#198754']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
 
-        if (dataEstados.some(val => val > 0)) {
-            new Chart(document.getElementById('estadosChart'), {
-                type: 'pie',
-                data: {
-                    labels: labelsEstados,
-                    datasets: [{
-                        data: dataEstados,
-                        backgroundColor: [
-                            '#dc3545', // Rojo: En Cocina
-                            '#0dcaf0', // Azul: Para Recoger
-                            '#ffc107', // Amarillo: En Mesa
-                            '#198754'  // Verde: Finalizado
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: { 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { position: 'right' } } 
-                }
-            });
-        } else {
-            const ctx = document.getElementById('estadosChart').getContext('2d');
-            ctx.font = "14px Arial";
-            ctx.fillText("Sin actividad en el servicio", 10, 50);
-        }
+    // --- 3. TOP PLATOS ---
+    new Chart(document.getElementById('chartPlatos'), {
+        type: 'bar',
+        data: {
+            labels: <%- graficos.topPlatos.labels %>,
+            datasets: [{
+                label: 'Cantidad',
+                data: <%- graficos.topPlatos.data %>,
+                backgroundColor: '#36b9cc'
+            }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+    });
+
+    // --- 4. TOP BEBIDAS ---
+    new Chart(document.getElementById('chartBebidas'), {
+        type: 'bar',
+        data: {
+            labels: <%- graficos.topBebidas.labels %>,
+            datasets: [{
+                label: 'Cantidad',
+                data: <%- graficos.topBebidas.data %>,
+                backgroundColor: '#e74a3b'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // --- 5. COMPARATIVO ---
+    new Chart(document.getElementById('chartComparativo'), {
+        type: 'bar',
+        data: {
+            labels: ['Ayer', 'Hoy'],
+            datasets: [{
+                label: 'Total Ventas',
+                data: <%- graficos.comparativo %>,
+                backgroundColor: ['#858796', '#1cc88a']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // --- 6. MESAS RENTABLES ---
+    new Chart(document.getElementById('chartMesas'), {
+        type: 'bar',
+        data: {
+            labels: <%- graficos.topMesas.labels %>,
+            datasets: [{
+                label: 'Ingresos Generados',
+                data: <%- graficos.topMesas.data %>,
+                backgroundColor: '#f6c23e'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
     });
 </script>
 

@@ -2,77 +2,104 @@
 
 <div class="container mt-4">
     
-    <!-- CABECERA CON BOTONES DE ACCIÓN -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="fas fa-chair text-secondary"></i> Gestión de Mesas</h1>
+    <!-- CABECERA CON BOTONES DE ACCIÓN PRINCIPALES -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+        <h1 class="m-0 text-secondary fw-bold"><i class="fas fa-chair me-2"></i>Gestión de Mesas</h1>
         
-        <div class="d-flex gap-2">
-            <!-- BOTÓN NUEVO: IR AL EDITOR VISUAL -->
-            <a href="/admin/mesas/mapa" class="btn btn-info text-white shadow-sm">
-                <i class="fas fa-map-marked-alt"></i> Diseñar Mapa
+        <div class="btn-group shadow-sm">
+            <!-- BOTÓN 1: MAPA VISUAL -->
+            <a href="/admin/mesas/mapa" class="btn btn-info text-white fw-bold">
+                <i class="fas fa-map-marked-alt me-2"></i>Diseñar Mapa
             </a>
 
-            <!-- BOTÓN DE EMERGENCIA: LIBERAR TODAS -->
-            <form action="/admin/mesas/liberar-todas" method="POST" onsubmit="return confirm('¿ESTÁS SEGURO? Esto pondrá TODAS las mesas en estado LIBRE (Verde). Úsalo solo en emergencias o al final del día.');">
-                <button type="submit" class="btn btn-danger shadow-sm">
-                    <i class="fas fa-exclamation-triangle"></i> Liberar Todas
+            <!-- BOTÓN 2: NUEVA MESA -->
+            <a href="/admin/mesas/nueva" class="btn btn-primary fw-bold">
+                <i class="fas fa-plus-circle me-2"></i>Nueva Mesa
+            </a>
+
+            <!-- BOTÓN 3: PÁNICO (Liberar Todas) -->
+            <form action="/admin/mesas/liberar-todas" method="POST" onsubmit="return confirm('⚠️ ¿ESTÁS SEGURO? \n\nEsto pondrá TODAS las mesas en estado LIBRE (Verde). \nÚsalo solo al final del día o para reiniciar el sistema.');" style="margin: 0;">
+                <button type="submit" class="btn btn-danger fw-bold" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Liberar Todo
                 </button>
             </form>
-
-            <!-- BOTÓN: CREAR NUEVA MESA -->
-            <a href="/admin/mesas/nueva" class="btn btn-primary shadow-sm">
-                <i class="fas fa-plus"></i> Nueva Mesa
-            </a>
         </div>
     </div>
 
-    <!-- LISTA DE MESAS EXISTENTES (VISTA DE TARJETAS) -->
-    <div class="row">
+    <!-- MENSAJES DE ERROR/ÉXITO (Si usas flash messages) -->
+    <%- include('../partials/messages') %>
+
+    <!-- LISTA DE MESAS EXISTENTES -->
+    <div class="row g-4">
         <% if (!mesas || mesas.length === 0) { %>
             <div class="col-12">
-                <div class="alert alert-info text-center py-5">
+                <div class="alert alert-info text-center py-5 shadow-sm">
+                    <i class="fas fa-info-circle fa-3x mb-3 text-info"></i>
                     <h4>No hay mesas creadas</h4>
-                    <p>Haz clic en "Nueva Mesa" para comenzar.</p>
+                    <p class="text-muted">Haz clic en el botón "Nueva Mesa" para comenzar a configurar tu restaurante.</p>
                 </div>
             </div>
         <% } else { %>
             <% mesas.forEach(mesa => { %>
-                <div class="col-6 col-md-4 col-lg-3 mb-4">
-                    <div class="card h-100 shadow-sm border-0">
-                        <!-- Cabecera de la tarjeta con color según estado -->
-                        <div class="card-header text-white d-flex justify-content-between align-items-center
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 shadow-sm border-0 table-card">
+                        
+                        <!-- Encabezado de la Tarjeta (Color según estado) -->
+                        <div class="card-header text-white d-flex justify-content-between align-items-center py-3
                             <%= mesa.estado === 'libre' ? 'bg-success' : 
                                mesa.estado === 'ocupado' ? 'bg-danger' : 
-                               mesa.estado === 'para_recoger' ? 'bg-info' : 'bg-warning text-dark' %>">
-                            <h5 class="mb-0">Mesa <%= mesa.numero %></h5>
-                            <span class="badge bg-light text-dark"><%= mesa.capacidad %> <i class="fas fa-user"></i></span>
+                               mesa.estado === 'para_recoger' ? 'bg-info text-dark' : 'bg-warning text-dark' %>">
+                            
+                            <h4 class="mb-0 fw-bold">#<%= mesa.numero %></h4>
+                            <span class="badge bg-white text-dark shadow-sm">
+                                <i class="fas fa-users me-1"></i><%= mesa.capacidad %>
+                            </span>
                         </div>
                         
-                        <div class="card-body text-center">
-                            <p class="text-muted mb-0">Estado: <strong><%= mesa.estado.toUpperCase() %></strong></p>
+                        <!-- Cuerpo de la Tarjeta -->
+                        <div class="card-body text-center bg-light">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Estado Actual</h6>
+                            <div class="fw-bold mb-2">
+                                <%= mesa.estado.toUpperCase().replace('_', ' ') %>
+                            </div>
+                            
                             <% if (mesa.pos_x || mesa.pos_y) { %>
-                                <small class="text-muted" style="font-size: 0.7rem;">
+                                <div class="badge bg-secondary opacity-50 fw-normal">
                                     Pos: <%= mesa.pos_x %>, <%= mesa.pos_y %>
-                                </small>
+                                </div>
+                            <% } else { %>
+                                <div class="badge bg-secondary opacity-25 fw-normal">Sin ubicar en mapa</div>
                             <% } %>
                         </div>
 
-                        <!-- Botones de Acción (Editar/Eliminar) -->
-                        <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
-                            <a href="/admin/mesas/editar/<%= mesa.id %>" class="btn btn-outline-warning btn-sm w-100 me-1">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form action="/admin/mesas/eliminar/<%= mesa.id %>" method="POST" class="w-100 ms-1" onsubmit="return confirm('¿Eliminar mesa <%= mesa.numero %>?');">
-                                <button type="submit" class="btn btn-outline-danger btn-sm w-100">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+                        <!-- Pie de Tarjeta con BOTONES GRANDES Y CLAROS -->
+                        <div class="card-footer bg-white border-top-0 p-2">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <a href="/admin/mesas/editar/<%= mesa.id %>" class="btn btn-outline-warning w-100 fw-bold btn-sm">
+                                        <i class="fas fa-edit me-1"></i>Editar
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <form action="/admin/mesas/eliminar/<%= mesa.id %>" method="POST" onsubmit="return confirm('¿Eliminar definitivamente la Mesa <%= mesa.numero %>?');">
+                                        <button type="submit" class="btn btn-outline-danger w-100 fw-bold btn-sm">
+                                            <i class="fas fa-trash-alt me-1"></i>Borrar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
+
                     </div>
                 </div>
             <% }); %>
         <% } %>
     </div>
 </div>
+
+<style>
+    .table-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .table-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+</style>
 
 <%- include('../partials/footer') %>

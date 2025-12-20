@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
         const mesas = await Mesa.findAll({ order: [['numero', 'ASC']] });
         res.render('mesero/dashboard', { mesas, pageTitle: 'Mapa de Mesas' });
     } catch (error) {
-        console.error(error);
+        console.error("Error al cargar las mesas:", error);
         res.status(500).send("Error interno.");
     }
 });
@@ -25,25 +25,54 @@ router.get('/mesa/:mesaId/clientes', async (req, res) => {
     }
 });
 
-// RUTA 3: SELECCIONAR MENÚS
+// =========================================================================
+// RUTA 3: SELECCIONAR MENÚS (MODIFICADA PARA TRAER EL "HINT" O RESUMEN)
+// =========================================================================
 router.get('/tomar-pedido/:mesaId', async (req, res) => {
     try {
         const { mesaId } = req.params;
         const { cantidadClientes } = req.query;
 
         const mesa = await Mesa.findByPk(mesaId);
-        if (!mesa) return res.redirect('/mesero');
+        if (!mesa) {
+            req.flash('error_msg', 'Mesa no encontrada.');
+            return res.redirect('/mesero');
+        }
 
-        const menusActivos = await Menu.findAll({ where: { activo: true } });
-        if (menusActivos.length === 0) {
+        // 1. Buscamos los menús activos E INCLUIMOS sus componentes para el resumen
+        const menusActivosRaw = await Menu.findAll({ 
+            where: { activo: true },
+            include: [{
+                model: Componente,
+                as: 'componentes',
+                attributes: ['nombre'] // Solo necesitamos el nombre para el hint
+            }]
+        });
+
+        if (menusActivosRaw.length === 0) {
             req.flash('error_msg', 'No hay menús activos.');
             return res.redirect('/mesero');
         }
 
+        // 2. Preparamos un objeto más sencillo para la vista, con el resumen de texto
+        const menus = menusActivosRaw.map(m => {
+            // Creamos una lista de lo que trae (ej: "Sopa, Arroz, Pollo")
+            // Limitamos a 5 para no saturar, o mostramos todos
+            const listaComponentes = m.componentes.map(c => c.nombre).join(', ');
+            
+            return {
+                id: m.id,
+                nombre: m.nombre,
+                precio_base: m.precio_base,
+                // Si no tiene componentes, ponemos un texto por defecto
+                resumen: listaComponentes || "Sin componentes específicos definidos"
+            };
+        });
+
         res.render('mesero/seleccionar-menus-clientes', {
             pageTitle: 'Seleccionar Menús',
             mesa,
-            menus: menusActivos,
+            menus: menus, // Enviamos la lista procesada con el resumen
             cantidadClientes: parseInt(cantidadClientes) || 1
         });
     } catch (error) {
@@ -52,13 +81,14 @@ router.get('/tomar-pedido/:mesaId', async (req, res) => {
     }
 });
 
-// RUTA 4: PROCESAR MENÚS
+// RUTA 4: PROCESAR MENÚS Y MOSTRAR COMPONENTES
 router.post('/seleccionar-menus-clientes/:mesaId', async (req, res) => {
     try {
         const { mesaId } = req.params;
         const { cantidadClientes } = req.body;
         const numClientes = parseInt(cantidadClientes);
         const mesa = await Mesa.findByPk(mesaId);
+
         const clientesConMenus = [];
 
         for (let i = 1; i <= numClientes; i++) {
@@ -99,12 +129,15 @@ router.post('/seleccionar-menus-clientes/:mesaId', async (req, res) => {
     }
 });
 
-// RUTA 5: GUARDAR PEDIDO (CON PRECIO BASE)
+// RUTA 5: GUARDAR PEDIDO FINAL
 router.post('/tomar-pedido/:mesaId', async (req, res) => {
     const { mesaId } = req.params;
     const { clientes } = req.body;
 
-    if (!clientes) return res.redirect('/mesero');
+    if (!clientes) {
+        req.flash('error_msg', 'Datos vacíos.');
+        return res.redirect('/mesero');
+    }
 
     const t = await sequelize.transaction();
     try {
@@ -115,8 +148,6 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
         
         for (const idx in clientes) {
             const clienteData = clientes[idx];
-            
-            // 1. BUSCAR EL PRECIO DEL MENÚ SELECCIONADO
             const menuSeleccionado = await Menu.findByPk(clienteData.menuId);
             const precioBase = menuSeleccionado ? menuSeleccionado.precio_base : 0;
 
@@ -129,7 +160,7 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
                     pedido_id: nuevoPedido.id,
                     cliente_numero: parseInt(idx) + 1,
                     notas: clienteData.notas || '',
-                    precio_unitario: precioBase // <--- AQUÍ GUARDAMOS EL PRECIO
+                    precio_unitario: precioBase
                 }, { transaction: t });
                 
                 await nuevoItem.setComponentes(componentesIds, { transaction: t });
@@ -142,16 +173,7 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
         const io = req.app.get('socketio');
         if (io) {
             const pedidoCompleto = await Pedido.findByPk(nuevoPedido.id, {
-                include: [
-                    { model: Mesa, as: 'mesa' }, 
-                    { 
-                        model: PedidoItem, as: 'items', 
-                        include: [{ 
-                            model: Componente, as: 'componentes',
-                            include: [{ model: Grupo, as: 'grupo' }] // <--- ¡AÑADIR ESTO!
-                         }]
-                    }
-                ]
+                include: [{ model: Mesa, as: 'mesa' }, { model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] }]
             });
             io.emit('nuevo_pedido', pedidoCompleto.toJSON());
         }
@@ -171,7 +193,7 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
 router.post('/entregar-pedido/:mesaId', async (req, res) => {
     const { mesaId } = req.params;
     try {
-        await Pedido.update({ estado: 'entregado' }, { where: { mesa_id: mesaId, estado: ['elaborado', 'recibido'] } });
+        await Pedido.update({ estado: 'entregado' }, { where: { mesa_id: mesaId, estado: ['elaborado', 'recibido', 'en_preparacion'] } });
         await Mesa.update({ estado: 'por_cobrar' }, { where: { id: mesaId } });
         
         const io = req.app.get('socketio');
