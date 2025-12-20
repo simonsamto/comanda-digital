@@ -1,16 +1,18 @@
 <%- include('../partials/header') %>
 
 <style>
-    /* Contenedor del Mapa (Igual al admin pero sin grid de fondo) */
-    #mapa-restaurante {
-        width: 100%;
-        height: 600px; /* Asegúrate que coincida o sea responsivo */
-        background-color: #fff;
-        border: 1px solid #ddd;
+    /* --- ESTILOS DEL MAPA VISUAL (PC/TABLET) --- */
+    #vista-mapa {
         position: relative;
-        overflow: auto; /* Scroll si es muy grande */
+        width: 100%;
+        height: 600px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        overflow: auto; /* Permite scroll si el mapa es gigante */
+        /* Patrón de fondo sutil */
+        background-image: radial-gradient(#ced4da 1px, transparent 1px);
+        background-size: 20px 20px;
     }
 
     .mesa-real {
@@ -21,87 +23,146 @@
         align-items: center;
         justify-content: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: transform 0.2s;
         text-decoration: none !important;
         color: white;
+        z-index: 10;
     }
-    .mesa-real:hover { transform: scale(1.05); z-index: 10; }
-    
-    /* Colores por Estado */
-    .mesa-libre { background-color: #198754; border: 2px solid #146c43; } /* Verde */
-    .mesa-ocupada { background-color: #dc3545; border: 2px solid #b02a37; } /* Rojo */
-    .mesa-recoger { 
-        background-color: #0dcaf0; border: 2px solid #0aa2c0; color: black;
-        animation: pulse-blue 2s infinite; 
-    }
-    .mesa-caja { background-color: #ffc107; border: 2px solid #cc9a06; color: black; }
+    .mesa-real:hover { transform: scale(1.05); z-index: 20; }
 
-    .mesa-numero { font-size: 1.5rem; font-weight: bold; line-height: 1; }
-    .mesa-estado { font-size: 0.7rem; text-transform: uppercase; margin-top: 5px; }
+    /* --- ESTILOS DE LA VISTA DE LISTA (CELULAR) --- */
+    .mesa-card-mobile {
+        height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-radius: 10px;
+        color: white;
+        text-decoration: none !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.1s;
+    }
+    .mesa-card-mobile:active { transform: scale(0.95); }
+
+    /* --- COLORES DE ESTADO (COMPARTIDOS) --- */
+    .bg-libre { background-color: #198754; border: 2px solid #146c43; }
+    .bg-ocupada { background-color: #dc3545; border: 2px solid #b02a37; }
+    .bg-recoger { background-color: #0dcaf0; border: 2px solid #0aa2c0; color: #000; animation: pulse-blue 2s infinite; }
+    .bg-caja { background-color: #ffc107; border: 2px solid #cc9a06; color: #000; }
 
     @keyframes pulse-blue {
         0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
-        70% { box-shadow: 0 0 0 15px rgba(13, 202, 240, 0); }
+        70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); }
         100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); }
     }
+
+    /* Ocultar elementos según la vista activa */
+    .d-none-custom { display: none !important; }
 </style>
 
 <div class="container-fluid mt-3">
+    
+    <!-- CONTROLES SUPERIORES -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="m-0"><i class="fas fa-map"></i> Salón</h2>
-        <div>
-            <span class="badge bg-success me-1">Libre</span>
-            <span class="badge bg-danger me-1">Ocupado</span>
-            <span class="badge bg-info text-dark me-1">Recoger</span>
-            <span class="badge bg-warning text-dark">Caja</span>
+        <h2 class="m-0"><i class="fas fa-map-marked-alt"></i> Mesas</h2>
+        
+        <!-- Botones para cambiar de vista -->
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary active" id="btn-ver-lista" onclick="cambiarVista('lista')">
+                <i class="fas fa-th-large"></i> <span class="d-none d-md-inline">Lista</span>
+            </button>
+            <button type="button" class="btn btn-outline-primary" id="btn-ver-mapa" onclick="cambiarVista('mapa')">
+                <i class="fas fa-map"></i> <span class="d-none d-md-inline">Mapa</span>
+            </button>
         </div>
     </div>
 
-    <!-- EL MAPA VISUAL -->
-    <div id="mapa-restaurante">
+    <!-- LEYENDA (Solo visible en pantallas medianas hacia arriba para ahorrar espacio en móvil) -->
+    <div class="d-none d-md-block mb-3 small">
+        <span class="badge bg-success me-1">Libre</span>
+        <span class="badge bg-danger me-1">Ocupado</span>
+        <span class="badge bg-info text-dark me-1">Recoger</span>
+        <span class="badge bg-warning text-dark">Caja</span>
+    </div>
+
+    <!-- ============================================= -->
+    <!-- VISTA 1: LISTA / CUADRÍCULA (OPTIMIZADO PARA MÓVIL) -->
+    <!-- ============================================= -->
+    <div id="vista-lista" class="row g-3">
         <% mesas.forEach(mesa => { %>
+            <!-- Lógica de Estado y Enlace -->
             <% 
-                let estadoClass = 'mesa-libre';
-                let link = `/mesero/mesa/${mesa.id}/clientes`; // Link por defecto
-                let textoEstado = 'Libre';
-                let formHTML = ''; // Para el botón de "Recoger"
+                let colorClass = 'bg-libre';
+                let icon = 'fa-chair';
+                let estadoTexto = 'Libre';
+                let link = `/mesero/mesa/${mesa.id}/clientes`;
+                let esFormulario = false;
 
                 if (mesa.estado === 'ocupado') {
-                    estadoClass = 'mesa-ocupada';
-                    textoEstado = 'Ocupada';
-                    link = '#'; // Bloqueado
+                    colorClass = 'bg-ocupada'; icon = 'fa-utensils'; estadoTexto = 'Ocupada'; link = '#';
                 } else if (mesa.estado === 'para_recoger') {
-                    estadoClass = 'mesa-recoger';
-                    textoEstado = '¡RECOGER!';
-                    // Formulario invisible que cubre la mesa para hacer el POST
-                    formHTML = `
-                        <form action="/mesero/entregar-pedido/${mesa.id}" method="POST" style="width:100%; height:100%; position:absolute; top:0; left:0;">
-                            <button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;" onclick="return confirm('¿Entregar pedido?');"></button>
-                        </form>
-                    `;
+                    colorClass = 'bg-recoger'; icon = 'fa-bell'; estadoTexto = '¡RECOGER!'; esFormulario = true;
                 } else if (mesa.estado === 'por_cobrar') {
-                    estadoClass = 'mesa-caja';
-                    textoEstado = 'Caja';
-                    link = '#'; // Bloqueado
+                    colorClass = 'bg-caja'; icon = 'fa-cash-register'; estadoTexto = 'Caja'; link = '#';
                 }
             %>
 
-            <!-- DIBUJO DE LA MESA -->
-            <div class="mesa-real <%= estadoClass %>" 
-                 style="left: <%= mesa.pos_x %>px; top: <%= mesa.pos_y %>px; width: <%= mesa.ancho %>px; height: <%= mesa.alto %>px;">
-                
-                <% if (mesa.estado === 'para_recoger') { %>
-                    <%- formHTML %>
-                <% } else if (link !== '#') { %>
-                    <a href="<%= link %>" style="position:absolute; width:100%; height:100%;"></a>
+            <!-- Renderizado de Tarjeta Móvil -->
+            <div class="col-4 col-sm-3 col-md-2">
+                <% if (esFormulario) { %>
+                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="height:100%">
+                        <button type="submit" class="card w-100 mesa-card-mobile <%= colorClass %> border-0 p-0" onclick="return confirm('¿Entregar?');">
+                            <i class="fas <%= icon %> fa-2x mb-1"></i>
+                            <div class="fw-bold fs-5"><%= mesa.numero %></div>
+                            <small style="font-size: 0.7rem;"><%= estadoTexto %></small>
+                        </button>
+                    </form>
+                <% } else { %>
+                    <a href="<%= link %>" class="mesa-card-mobile <%= colorClass %>" <%= link === '#' ? 'style="opacity:0.6; cursor:not-allowed;"' : '' %>>
+                        <i class="fas <%= icon %> fa-2x mb-1"></i>
+                        <div class="fw-bold fs-5"><%= mesa.numero %></div>
+                        <small style="font-size: 0.7rem;"><%= estadoTexto %></small>
+                    </a>
                 <% } %>
-
-                <div class="mesa-numero"><%= mesa.numero %></div>
-                <div class="mesa-estado"><%= textoEstado %></div>
             </div>
-
         <% }); %>
     </div>
+
+    <!-- ============================================= -->
+    <!-- VISTA 2: MAPA VISUAL (OPTIMIZADO PARA PC)     -->
+    <!-- ============================================= -->
+    <div id="vista-mapa" class="d-none-custom">
+        <% mesas.forEach(mesa => { %>
+            <% 
+                // Repetimos lógica de clases para el mapa
+                let colorClass = 'bg-libre';
+                let texto = 'Libre';
+                let linkMap = `/mesero/mesa/${mesa.id}/clientes`;
+                let esFormMap = false;
+
+                if (mesa.estado === 'ocupado') { colorClass = 'bg-ocupada'; texto = 'Ocupada'; linkMap = '#'; }
+                else if (mesa.estado === 'para_recoger') { colorClass = 'bg-recoger'; texto = '¡RECOGER!'; esFormMap = true; }
+                else if (mesa.estado === 'por_cobrar') { colorClass = 'bg-caja'; texto = 'Caja'; linkMap = '#'; }
+            %>
+
+            <div class="mesa-real <%= colorClass %>"
+                 style="left: <%= mesa.pos_x %>px; top: <%= mesa.pos_y %>px; width: <%= mesa.ancho %>px; height: <%= mesa.alto %>px;">
+                
+                <% if (esFormMap) { %>
+                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="width:100%; height:100%; position:absolute;">
+                        <button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;"></button>
+                    </form>
+                <% } else if (linkMap !== '#') { %>
+                    <a href="<%= linkMap %>" style="position:absolute; width:100%; height:100%;"></a>
+                <% } %>
+
+                <div style="font-size: 1.2rem; font-weight: bold;"><%= mesa.numero %></div>
+                <div style="font-size: 0.6rem;"><%= texto %></div>
+            </div>
+        <% }); %>
+    </div>
+
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -109,6 +170,45 @@
     const socket = io();
     socket.on('pedido_listo_para_recoger', () => location.reload());
     socket.on('mesa_liberada', () => location.reload()); 
+
+    // --- LÓGICA RESPONSIVE ---
+    const vistaLista = document.getElementById('vista-lista');
+    const vistaMapa = document.getElementById('vista-mapa');
+    const btnLista = document.getElementById('btn-ver-lista');
+    const btnMapa = document.getElementById('btn-ver-mapa');
+
+    function cambiarVista(vista) {
+        if (vista === 'lista') {
+            vistaLista.classList.remove('d-none-custom');
+            vistaMapa.classList.add('d-none-custom');
+            btnLista.classList.add('active');
+            btnMapa.classList.remove('active');
+            localStorage.setItem('vistaPreferida', 'lista');
+        } else {
+            vistaLista.classList.add('d-none-custom');
+            vistaMapa.classList.remove('d-none-custom');
+            btnLista.classList.remove('active');
+            btnMapa.classList.add('active');
+            localStorage.setItem('vistaPreferida', 'mapa');
+        }
+    }
+
+    // --- DETECCIÓN AUTOMÁTICA ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const preferencia = localStorage.getItem('vistaPreferida');
+        const esMovil = window.innerWidth < 768; // 768px es el punto de quiebre de tablets
+
+        if (preferencia) {
+            cambiarVista(preferencia);
+        } else {
+            // Si no hay preferencia, decide por el tamaño de pantalla
+            if (esMovil) {
+                cambiarVista('lista');
+            } else {
+                cambiarVista('mapa');
+            }
+        }
+    });
 </script>
 
 <%- include('../partials/footer') %>
