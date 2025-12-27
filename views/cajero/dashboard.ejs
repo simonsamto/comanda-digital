@@ -17,17 +17,13 @@
         <% } else { %>
             <% pedidos.forEach(pedido => { %>
                 
-                <!-- CÁLCULO DEL TOTAL CORRECTO -->
+                <!-- Cálculo del Total -->
                 <% 
                     let totalPedido = 0;
                     let itemsCount = 0;
-                    
                     pedido.items.forEach(item => {
                         itemsCount++;
-                        // 1. Sumamos el precio base guardado en la BD
                         totalPedido += parseFloat(item.precio_unitario || 0);
-
-                        // 2. Sumamos los componentes extra
                         if (item.componentes) {
                             item.componentes.forEach(comp => {
                                 totalPedido += parseFloat(comp.precio_adicional || 0);
@@ -46,16 +42,77 @@
                             <div class="text-center mb-4">
                                 <h6 class="text-muted">Total a Pagar</h6>
                                 <h1 class="display-4 fw-bold text-success">$<%= totalPedido.toLocaleString('es-CO') %></h1>
-                                <span class="badge bg-secondary"><%= itemsCount %> almuerzos/items</span>
+                                <span class="badge bg-secondary"><%= itemsCount %> items</span>
                             </div>
 
                             <div class="mt-auto">
-                                <form action="/cajero/cobrar/<%= pedido.id %>" method="POST">
-                                    <button type="submit" class="btn btn-success w-100 btn-lg py-3" onclick="return confirm('¿Confirmar pago?');">
-                                        <i class="fas fa-hand-holding-usd me-2"></i> COBRAR
-                                    </button>
-                                </form>
+                                <!-- Botón que abre el Modal -->
+                                <button type="button" class="btn btn-success w-100 btn-lg py-3" data-bs-toggle="modal" data-bs-target="#cobrarModal<%= pedido.id %>">
+                                    <i class="fas fa-hand-holding-usd me-2"></i> PROCESAR PAGO
+                                </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL DE COBRO PARA ESTE PEDIDO -->
+                <div class="modal fade" id="cobrarModal<%= pedido.id %>" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title">Cobrar Mesa <%= pedido.mesa.numero %></h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="/cajero/pedido/<%= pedido.id %>/estado" method="POST"> <!-- Ajusta la ruta según cocinaController o cajeroController -->
+                                <!-- NOTA: En el controller te puse 'cobrarPedido', la ruta debería ser /cajero/cobrar/:pedidoId -->
+                                <!-- Ajuste aquí: -->
+                            </form>
+                            
+                            <!-- CORRECCIÓN DEL FORMULARIO -->
+                            <form action="/cajero/pedido/<%= pedido.id %>/estado" method="POST" id="form-cobro-<%= pedido.id %>">
+                                <!-- Espera, en el código de rutas de cajero normalmente es /cajero/cobrar/:id. Ajustemos el action: -->
+                            </form>
+                            
+                            <form action="/cajero/pedido/<%= pedido.id %>/estado" method="POST" class="d-none"></form> <!-- Dummy -->
+
+                            <form action="/cajero/cobrar/<%= pedido.id %>" method="POST">
+                                <div class="modal-body text-start">
+                                    <h3 class="text-center text-success fw-bold mb-4">$<%= totalPedido.toLocaleString('es-CO') %></h3>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Método de Pago:</label>
+                                        
+                                        <div class="form-check mb-2 card p-2 border-success bg-light">
+                                            <input class="form-check-input" type="radio" name="tipo_pago" id="pago_efectivo_<%= pedido.id %>" value="efectivo" checked onchange="toggleEmpresa(this, <%= pedido.id %>)">
+                                            <label class="form-check-label w-100" for="pago_efectivo_<%= pedido.id %>">
+                                                <i class="fas fa-money-bill-wave text-success me-2"></i> Efectivo / Transferencia
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check card p-2 border-primary bg-light">
+                                            <input class="form-check-input" type="radio" name="tipo_pago" id="pago_credito_<%= pedido.id %>" value="credito" onchange="toggleEmpresa(this, <%= pedido.id %>)">
+                                            <label class="form-check-label w-100" for="pago_credito_<%= pedido.id %>">
+                                                <i class="fas fa-building text-primary me-2"></i> Crédito Empresa (Fiado)
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Selector de Empresa (Oculto) -->
+                                    <div id="div_empresa_<%= pedido.id %>" class="mb-3 d-none animate__animated animate__fadeIn">
+                                        <label class="form-label fw-bold">Seleccionar Empresa:</label>
+                                        <select name="empresa_id" class="form-select border-primary">
+                                            <option value="">-- Seleccione --</option>
+                                            <% empresas.forEach(emp => { %>
+                                                <option value="<%= emp.id %>"><%= emp.nombre %></option>
+                                            <% }); %>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-success fw-bold">CONFIRMAR PAGO</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -68,6 +125,19 @@
 <script>
     const socket = io();
     socket.on('mesa_por_cobrar', () => location.reload());
+
+    function toggleEmpresa(radio, id) {
+        const div = document.getElementById('div_empresa_' + id);
+        const select = div.querySelector('select');
+        if (radio.value === 'credito') {
+            div.classList.remove('d-none');
+            select.required = true;
+        } else {
+            div.classList.add('d-none');
+            select.required = false;
+            select.value = "";
+        }
+    }
 </script>
 
 <%- include('../partials/footer') %>

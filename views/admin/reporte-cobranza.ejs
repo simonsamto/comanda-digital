@@ -1,0 +1,55 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <h1>Cuentas por Cobrar</h1>
+    <div class="card mb-4 p-3 bg-light">
+        <form action="/admin/informes/cobranza" method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label>Filtrar por Empresa</label>
+                <select name="empresaId" class="form-select">
+                    <option value="">Todas</option>
+                    <% empresas.forEach(e => { %>
+                        <option value="<%= e.id %>" <%= filtros.empresaId == e.id ? 'selected' : '' %>><%= e.nombre %></option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>Desde</label>
+                <input type="date" name="fechaInicio" class="form-control" value="<%= filtros.fechaInicio %>">
+            </div>
+            <div class="col-md-3">
+                <label>Hasta</label>
+                <input type="date" name="fechaFin" class="form-control" value="<%= filtros.fechaFin %>">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="alert alert-warning text-center">
+        <h3>Total Pendiente de Cobro: <strong>$<%= totalDeuda.toLocaleString('es-CO') %></strong></h3>
+    </div>
+
+    <table class="table table-bordered bg-white">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Empresa</th>
+                <th>Pedido #</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% pedidos.forEach(p => { %>
+                <tr>
+                    <td><%= new Date(p.createdAt).toLocaleDateString() %></td>
+                    <td><%= p.empresa ? p.empresa.nombre : 'Sin Empresa' %></td>
+                    <td><%= p.id %></td>
+                    <td class="text-end">$<%= p.totalCalculado.toLocaleString('es-CO') %></td>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+</div>
+<%- include('../partials/footer') %>

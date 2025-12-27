@@ -3,11 +3,6 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 
-// Verificación de seguridad
-if (!adminController.showDashboard) {
-    console.error("❌ ERROR: Controlador incompleto.");
-}
-
 // 1. DASHBOARD
 router.get('/', adminController.showDashboard);
 
@@ -19,11 +14,11 @@ router.get('/menus/editar/:id', adminController.showEditMenuForm);
 router.post('/menus/editar/:id', adminController.updateMenu);
 router.post('/menus/eliminar/:id', adminController.deleteMenu);
 
-// Configuración de componentes del menú
+// Configuración
 router.get('/menus/:id/configurar', adminController.showConfigurarMenu);
 router.post('/menus/:id/configurar', adminController.saveConfigurarMenu);
 
-// 3. GESTIÓN DE COMPONENTES Y GRUPOS
+// 3. GESTIÓN COMPONENTES
 router.get('/gestion-componentes', adminController.getGestionComponentes);
 router.post('/componentes', adminController.createComponente);
 router.get('/componentes/editar/:id', adminController.showEditComponenteForm);
@@ -35,7 +30,7 @@ router.get('/grupos/editar/:id', adminController.showEditGrupoForm);
 router.post('/grupos/editar/:id', adminController.updateGrupo);
 router.post('/grupos/eliminar/:id', adminController.deleteGrupo);
 
-// 4. GESTIÓN DE USUARIOS
+// 4. GESTIÓN USUARIOS
 router.get('/usuarios', adminController.getUsuarios);
 router.get('/usuarios/nuevo', adminController.showNewUserForm);
 router.post('/usuarios/nuevo', adminController.createUser);
@@ -43,20 +38,27 @@ router.get('/usuarios/editar/:id', adminController.showEditUserForm);
 router.post('/usuarios/editar/:id', adminController.updateUser);
 router.post('/usuarios/estado/:id', adminController.toggleUserStatus);
 
-// 5. GESTIÓN DE MESAS (AQUÍ ESTABA EL PROBLEMA, AHORA CORREGIDO)
-router.get('/mesas', adminController.getMesas); // Ver lista
+// 5. GESTIÓN MESAS
+router.get('/mesas', adminController.getMesas);
+router.get('/mesas/nueva', adminController.showNewMesaForm);
+router.post('/mesas/nueva', adminController.createMesa);
+router.get('/mesas/editar/:id', adminController.showEditMesaForm);
+router.post('/mesas/editar/:id', adminController.updateMesa);
+router.post('/mesas/eliminar/:id', adminController.deleteMesa);
+router.post('/mesas/liberar-todas', adminController.liberarTodasLasMesas);
+
 router.get('/mesas/mapa', adminController.getMapaEditor);
-router.get('/mesas/nueva', adminController.showNewMesaForm); // Formulario crear
-router.post('/mesas/nueva', adminController.createMesa); // Acción crear (POST)
-router.get('/mesas/editar/:id', adminController.showEditMesaForm); // Formulario editar
-router.post('/mesas/editar/:id', adminController.updateMesa); // Acción editar (POST)
-router.post('/mesas/eliminar/:id', adminController.deleteMesa); // Eliminar
-router.post('/mesas/liberar-todas', adminController.liberarTodasLasMesas); // Botón de pánico
 router.post('/mesas/mapa/guardar', adminController.saveMapaLayout);
 
-// 6. INFORMES
+// 6. GESTIÓN EMPRESAS (¡AQUÍ ESTÁ LA CORRECCIÓN!)
+router.get('/empresas', adminController.getGestionEmpresas);
+router.post('/empresas', adminController.createEmpresa);
+router.post('/empresas/eliminar/:id', adminController.deleteEmpresa);
+
+// 7. INFORMES
 router.get('/informes', adminController.getInformes);
 router.post('/informes/ventas', adminController.generarReporteFechas);
 router.get('/informes/top', adminController.generarReporteTop);
+router.get('/informes/cobranza', adminController.getReporteCuentasCobrar);
 
 module.exports = router;

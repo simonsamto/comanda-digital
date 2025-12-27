@@ -1,0 +1,52 @@
+<%- include('../partials/header') %>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">Nueva Empresa</div>
+                <div class="card-body">
+                    <form action="/admin/empresas" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre Empresa</label>
+                            <input type="text" class="form-control" name="nombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">NIT / RUC</label>
+                            <input type="text" class="form-control" name="nit">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" name="telefono">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Guardar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">Empresas Registradas</div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>Nombre</th><th>NIT</th><th>Teléfono</th><th>Acción</th></tr></thead>
+                        <tbody>
+                            <% empresas.forEach(emp => { %>
+                                <tr>
+                                    <td><%= emp.nombre %></td>
+                                    <td><%= emp.nit %></td>
+                                    <td><%= emp.telefono %></td>
+                                    <td>
+                                        <form action="/admin/empresas/eliminar/<%= emp.id %>" method="POST" onsubmit="return confirm('¿Borrar?');">
+                                            <button class="btn btn-sm btn-outline-danger">X</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<%- include('../partials/footer') %>

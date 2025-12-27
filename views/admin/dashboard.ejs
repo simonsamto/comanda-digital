@@ -2,33 +2,48 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <div class="container-fluid mt-4">
-    <h1 class="mb-4 text-center fw-bold text-secondary">Tablero de Control Gerencial</h1>
+    
+    <!-- ENCABEZADO CON BOTONES DE NAVEGACIÓN -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h1 class="fw-bold text-dark m-0"><i class="fas fa-chart-line text-primary"></i> Tablero Gerencial</h1>
+            <p class="text-muted m-0">Resumen en tiempo real de la operación.</p>
+        </div>
+        
+        <div class="btn-group shadow-sm">
+            <a href="/admin/gestion-menu" class="btn btn-outline-primary fw-bold"><i class="fas fa-utensils me-2"></i>Menús</a>
+            <a href="/admin/informes" class="btn btn-outline-success fw-bold"><i class="fas fa-file-invoice-dollar me-2"></i>Informes</a>
+            <a href="/admin/empresas" class="btn btn-outline-info fw-bold"><i class="fas fa-building me-2"></i>Empresas</a>
+            <a href="/admin/usuarios" class="btn btn-outline-dark fw-bold"><i class="fas fa-users me-2"></i>Usuarios</a>
+            <a href="/admin/mesas" class="btn btn-outline-secondary fw-bold"><i class="fas fa-chair me-2"></i>Mesas</a>
+        </div>
+    </div>
 
     <!-- 1. KPIs SUPERIORES -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card bg-primary text-white text-center p-3 shadow-sm">
-                <h3>$<%= kpis.ventasHoy.toLocaleString() %></h3>
-                <small>Ventas Hoy</small>
+            <div class="card bg-primary text-white text-center p-3 shadow-sm h-100 border-0">
+                <h3 class="fw-bold">$<%= kpis.ventasHoy.toLocaleString() %></h3>
+                <small class="text-uppercase opacity-75">Ventas Hoy</small>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-success text-white text-center p-3 shadow-sm">
-                <h3><%= kpis.pedidosHoy %></h3>
-                <small>Pedidos Pagados</small>
+            <div class="card bg-success text-white text-center p-3 shadow-sm h-100 border-0">
+                <h3 class="fw-bold"><%= kpis.pedidosHoy %></h3>
+                <small class="text-uppercase opacity-75">Pedidos Pagados</small>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-info text-white text-center p-3 shadow-sm">
-                <h3>$<%= kpis.ticketPromedio.toLocaleString(undefined, {maximumFractionDigits:0}) %></h3>
-                <small>Ticket Promedio</small>
+            <div class="card bg-info text-white text-center p-3 shadow-sm h-100 border-0">
+                <h3 class="fw-bold">$<%= kpis.ticketPromedio.toLocaleString(undefined, {maximumFractionDigits:0}) %></h3>
+                <small class="text-uppercase opacity-75">Ticket Promedio</small>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-secondary text-white text-center p-3 shadow-sm">
+            <div class="card bg-secondary text-white text-center p-3 shadow-sm h-100 border-0">
                 <!-- Espacio para otro KPI futuro -->
-                <h3>--</h3>
-                <small>Meta del Día</small>
+                <h3 class="fw-bold">--</h3>
+                <small class="text-uppercase opacity-75">Meta del Día</small>
             </div>
         </div>
     </div>
@@ -36,14 +51,14 @@
     <!-- FILA 1: LOS 3 GRANDES -->
     <div class="row mb-4">
         <div class="col-md-8">
-            <div class="card shadow h-100">
-                <div class="card-header fw-bold">1. Ventas por Hora (Picos de Demanda)</div>
-                <div class="card-body"><canvas id="chartHora"></canvas></div>
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-primary">1. Ventas por Hora (Picos de Demanda)</div>
+                <div class="card-body"><canvas id="chartHora" height="100"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow h-100">
-                <div class="card-header fw-bold">2. Estado Actual (En Vivo)</div>
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-info">2. Estado Actual (En Vivo)</div>
                 <div class="card-body"><canvas id="chartEstados"></canvas></div>
             </div>
         </div>
@@ -52,20 +67,20 @@
     <!-- FILA 2: PRODUCTOS -->
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card shadow h-100">
-                <div class="card-header fw-bold">3. Top 5 Platos</div>
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">3. Top 5 Platos</div>
                 <div class="card-body"><canvas id="chartPlatos"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow h-100">
-                <div class="card-header fw-bold">4. Top 5 Bebidas</div>
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">4. Top 5 Bebidas</div>
                 <div class="card-body"><canvas id="chartBebidas"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow h-100">
-                <div class="card-header fw-bold">5. Hoy vs. Ayer</div>
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">5. Hoy vs. Ayer</div>
                 <div class="card-body"><canvas id="chartComparativo"></canvas></div>
             </div>
         </div>
@@ -74,17 +89,19 @@
     <!-- FILA 3: MESAS Y RENDIMIENTO -->
     <div class="row mb-4">
         <div class="col-md-6">
-            <div class="card shadow h-100">
-                <div class="card-header fw-bold">6. Mesas Más Rentables ($)</div>
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-warning">6. Mesas Más Rentables ($)</div>
                 <div class="card-body"><canvas id="chartMesas"></canvas></div>
             </div>
         </div>
-        <!-- Aquí puedes añadir el gráfico 7, 8, 9... -->
         <div class="col-md-6">
-            <div class="card shadow h-100">
-                <div class="card-header fw-bold">7. Distribución de Métodos de Pago (Ejemplo)</div>
-                <div class="card-body d-flex align-items-center justify-content-center text-muted">
-                    (Requiere módulo de pagos detallado)
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">7. Distribución de Métodos de Pago</div>
+                <div class="card-body d-flex align-items-center justify-content-center text-muted bg-light rounded m-3">
+                    <div class="text-center p-5">
+                        <i class="fas fa-chart-pie fa-3x mb-3 opacity-25"></i>
+                        <p>Información disponible próximamente</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -93,6 +110,10 @@
 </div>
 
 <script>
+    // Configuración común para que se vea limpio
+    Chart.defaults.font.family = "'Segoe UI', 'Helvetica', 'Arial', sans-serif";
+    Chart.defaults.color = '#666';
+
     // --- 1. VENTAS POR HORA ---
     new Chart(document.getElementById('chartHora'), {
         type: 'line',
@@ -102,11 +123,18 @@
                 label: 'Ventas ($)',
                 data: <%- graficos.ventasHora %>,
                 borderColor: '#4e73df',
+                backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                borderWidth: 2,
                 fill: true,
-                backgroundColor: 'rgba(78, 115, 223, 0.1)'
+                tension: 0.4 // Curvas suaves
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] } }, x: { grid: { display: false } } }
+        }
     });
 
     // --- 2. ESTADOS ---
@@ -116,10 +144,11 @@
             labels: <%- graficos.estados.labels %>,
             datasets: [{
                 data: <%- graficos.estados.data %>,
-                backgroundColor: ['#dc3545', '#0dcaf0', '#ffc107', '#198754']
+                backgroundColor: ['#dc3545', '#0dcaf0', '#ffc107', '#198754'],
+                borderWidth: 0
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
     });
 
     // --- 3. TOP PLATOS ---
@@ -130,10 +159,11 @@
             datasets: [{
                 label: 'Cantidad',
                 data: <%- graficos.topPlatos.data %>,
-                backgroundColor: '#36b9cc'
+                backgroundColor: '#36b9cc',
+                borderRadius: 4
             }]
         },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
     // --- 4. TOP BEBIDAS ---
@@ -144,10 +174,11 @@
             datasets: [{
                 label: 'Cantidad',
                 data: <%- graficos.topBebidas.data %>,
-                backgroundColor: '#e74a3b'
+                backgroundColor: '#e74a3b',
+                borderRadius: 4
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
     // --- 5. COMPARATIVO ---
@@ -158,10 +189,11 @@
             datasets: [{
                 label: 'Total Ventas',
                 data: <%- graficos.comparativo %>,
-                backgroundColor: ['#858796', '#1cc88a']
+                backgroundColor: ['#858796', '#1cc88a'],
+                borderRadius: 4
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
     // --- 6. MESAS RENTABLES ---
@@ -172,10 +204,11 @@
             datasets: [{
                 label: 'Ingresos Generados',
                 data: <%- graficos.topMesas.data %>,
-                backgroundColor: '#f6c23e'
+                backgroundColor: '#f6c23e',
+                borderRadius: 4
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 </script>
 
