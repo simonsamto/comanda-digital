@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // Un Menu se compone de muchos Componentes a través de la tabla intermedia 'menu_componentes'
       Menu.belongsToMany(models.Componente, {
-        through: 'menu_componentes', // Nombre exacto de la tabla pivote en la BD
+        through: 'MenuComponente', // Nombre exacto de la tabla pivote en la BD
         foreignKey: 'menu_id',
         otherKey: 'componente_id',
         as: 'componentes' // Este alias es crucial, es el que usa menuActivo.getComponentes()

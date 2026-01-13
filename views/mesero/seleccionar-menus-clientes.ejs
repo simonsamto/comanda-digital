@@ -1,6 +1,7 @@
 <%- include('../partials/header') %>
 
 <div class="container mt-4" style="max-width: 900px;">
+    <!-- Encabezado de la Tarjeta -->
     <div class="card shadow-sm border-0">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Configurar Pedido - Mesa <%= mesa.numero %></h4>
@@ -8,7 +9,9 @@
         </div>
         
         <div class="card-body bg-light">
-            <form action="/mesero/seleccionar-menus-clientes/<%= mesa.id %>" method="POST">
+            <!-- Formulario que envía a la siguiente etapa (Personalizar Componentes) -->
+            <!-- Asegúrate de tener esta ruta definida en tus rutas (routes/mesero.js) -->
+            <form action="/mesero/personalizar-pedido/<%= mesa.id %>" method="POST">
                 <input type="hidden" name="cantidadClientes" value="<%= cantidadClientes %>">
 
                 <div class="row g-3">
@@ -21,6 +24,7 @@
                                             <i class="fas fa-user me-1"></i> Cliente <%= i %>
                                         </label>
 
+                                        <!-- Botón copiar solo en el primer cliente -->
                                         <% if (i === 1 && cantidadClientes > 1) { %>
                                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="aplicarATodos()">
                                                 <i class="fas fa-copy"></i> Aplicar a todos
@@ -35,18 +39,21 @@
                                             required
                                             onchange="mostrarDetalles(this, <%= i %>)">
                                         <option value="" selected disabled>¿Qué va a pedir?</option>
+                                        
                                         <% menus.forEach(menu => { %>
+                                            <!-- Aquí se inyecta el resumen generado en el controlador -->
                                             <option value="<%= menu.id %>" 
-                                                    data-resumen="<%= menu.resumen %>"> <!-- AQUÍ ESTÁ EL DATO DEL HINT -->
+                                                    data-resumen="<%= menu.resumen %>"
+                                                    data-precio="<%= menu.precio_base %>">
                                                 <%= menu.nombre %> - $<%= parseFloat(menu.precio_base).toLocaleString('es-CO') %>
                                             </option>
                                         <% }); %>
                                     </select>
 
-                                    <!-- HINT / AYUDA VISUAL (Oculto al inicio) -->
+                                    <!-- HINT / AYUDA VISUAL (Muestra qué incluye por defecto) -->
                                     <div id="hint_<%= i %>" class="alert alert-info py-2 px-3 small mb-0 d-none">
                                         <i class="fas fa-info-circle me-1"></i> 
-                                        <strong class="text-dark">Incluye:</strong> 
+                                        <strong class="text-dark">Por defecto:</strong> 
                                         <span class="detalle-texto text-secondary"></span>
                                     </div>
 
@@ -56,11 +63,12 @@
                     <% } %>
                 </div>
 
+                <!-- Botones de Acción -->
                 <div class="d-grid gap-2 mt-4 pt-3 border-top">
                     <button type="submit" class="btn btn-success btn-lg shadow">
                         CONTINUAR A COMPONENTES <i class="fas fa-arrow-right ms-2"></i>
                     </button>
-                    <a href="/mesero" class="btn btn-outline-secondary">Cancelar</a>
+                    <a href="/mesero/mesa/<%= mesa.id %>" class="btn btn-outline-secondary">Cancelar</a>
                 </div>
             </form>
         </div>
@@ -68,28 +76,34 @@
 </div>
 
 <script>
-    // Función para mostrar el hint cuando cambia el select
+    // 1. Mostrar resumen al cambiar selección
     function mostrarDetalles(selectElement, clienteIndex) {
         const hintBox = document.getElementById(`hint_${clienteIndex}`);
         const hintText = hintBox.querySelector('.detalle-texto');
         
         // Obtener la opción seleccionada
         const selectedOption = selectElement.options[selectElement.selectedIndex];
+        
+        // Leer el atributo data-resumen
         const resumen = selectedOption.getAttribute('data-resumen');
 
-        if (resumen) {
+        if (resumen && resumen !== "Sin componentes predefinidos") {
             hintText.textContent = resumen;
             hintBox.classList.remove('d-none');
-            hintBox.classList.add('animate__animated', 'animate__fadeIn'); // Animación suave
+            hintBox.classList.add('animate__animated', 'animate__fadeIn');
         } else {
             hintBox.classList.add('d-none');
         }
     }
 
-    // Función para copiar la selección del Cliente 1 a todos
+    // 2. Copiar selección del Cliente 1 a todos
     function aplicarATodos() {
         const primerSelect = document.getElementById('cliente_1_menu');
         const valorSeleccionado = primerSelect.value;
+        
+        // Obtener el resumen para copiarlo también visualmente
+        const opcionSeleccionada = primerSelect.options[primerSelect.selectedIndex];
+        const resumenOriginal = opcionSeleccionada.getAttribute('data-resumen');
 
         if (!valorSeleccionado) {
             alert("Seleccione un menú para el Cliente 1 primero.");
@@ -97,11 +111,22 @@
         }
 
         const todosSelects = document.querySelectorAll('.menu-selector');
+        
         todosSelects.forEach((select, index) => {
-            if (index > 0) { // Omitir el primero
+            if (index > 0) { // Saltamos el primero
                 select.value = valorSeleccionado;
-                // Disparar manualmente el evento para que se muestre el Hint en todos
-                mostrarDetalles(select, index + 1);
+                
+                // Disparar manualmente la actualización visual del Hint
+                const clienteIndex = index + 1;
+                const hintBox = document.getElementById(`hint_${clienteIndex}`);
+                const hintText = hintBox.querySelector('.detalle-texto');
+                
+                if (resumenOriginal && resumenOriginal !== "Sin componentes predefinidos") {
+                    hintText.textContent = resumenOriginal;
+                    hintBox.classList.remove('d-none');
+                } else {
+                    hintBox.classList.add('d-none');
+                }
             }
         });
     }

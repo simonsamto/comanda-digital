@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
 
       // Un Componente puede estar en MUCHOS Menus (a través de la tabla intermedia)
       Componente.belongsToMany(models.Menu, {
-        through: 'menu_componentes',
+        through: 'MenuComponente',
         foreignKey: 'componente_id',
         otherKey: 'menu_id',
         as: 'menus'

@@ -1,137 +1,84 @@
 <%- include('../partials/header') %>
 
 <style>
-    .cliente-card { border: 1px solid #dee2e6; }
-    .resumen-card { position: sticky; top: 20px; }
-    .form-check-label { cursor: pointer; user-select: none; }
+    .cliente-card { border: 1px solid #dee2e6; margin-bottom: 10px; }
+    .card-header { padding: 5px 10px; background-color: #f8f9fa; border-bottom: 1px solid #ddd; }
+    .card-body { padding: 5px; }
+    .grupo-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; align-items: center; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+    .grupo-label { font-weight: bold; font-size: 0.85rem; width: 100%; color: #666; margin-bottom: 2px; }
+    .btn-check + .btn-outline-secondary { border-radius: 20px; padding: 2px 10px; font-size: 0.85rem; border: 1px solid #ced4da; color: #495057; }
+    .btn-check:checked + .btn-outline-secondary { background-color: #0d6efd; color: white; border-color: #0d6efd; }
+    .input-notas { font-size: 0.85rem; height: 30px; }
+    .resumen-flotante { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 2px solid #0d6efd; padding: 10px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+    .espacio-footer { height: 80px; }
 </style>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Pedido: Mesa <%= mesa.numero %></h1>
-        <a href="/mesero" class="btn btn-secondary">Cancelar</a>
+<div class="container-fluid mt-2 px-2">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="m-0">Mesa <%= mesa.numero %></h5>
+        <a href="/mesero" class="btn btn-sm btn-outline-secondary">Cancelar</a>
     </div>
 
     <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="POST" id="pedido-form">
-        <div class="row">
-            <div class="col-lg-8">
-                <% clientesConMenus.forEach((clienteData, index) => { %>
-                    <div class="cliente-card card mb-4" 
-                         data-cliente-index="<%= index %>"
-                         data-cliente-numero="<%= clienteData.clienteNumero %>"
-                         data-menu-nombre="<%= clienteData.menu.nombre %>"
-                         data-precio-base="<%= parseFloat(clienteData.menu.precio_base) %>">
-                        
-                        <div class="card-header bg-primary text-white">
-                            <strong>Cliente <%= clienteData.clienteNumero %></strong> - <%= clienteData.menu.nombre %>
+        <% clientesConMenus.forEach((clienteData, index) => { %>
+            <div class="cliente-card card" data-precio-base="<%= parseFloat(clienteData.menu.precio_base) %>">
+                <div class="card-header d-flex justify-content-between">
+                    <strong><i class="fas fa-user"></i> <%= clienteData.clienteNumero %></strong>
+                    <span class="badge bg-primary"><%= clienteData.menu.nombre %></span>
+                </div>
+                <div class="card-body">
+                    <input type="hidden" name="clientes[<%= index %>][menuId]" value="<%= clienteData.menu.id %>">
+                    <% Object.keys(clienteData.grupos).forEach(nombreGrupo => { %>
+                        <div class="grupo-row">
+                            <div class="grupo-label"><%= nombreGrupo %></div>
+                            <% const grupo = clienteData.grupos[nombreGrupo]; %>
+                            <% grupo.componentes.forEach((componente) => { %>
+                                <input type="checkbox" class="btn-check componente-checkbox" 
+                                       name="clientes[<%= index %>][<%= grupo.id %>][]" 
+                                       id="c_<%= index %>_<%= componente.id %>" 
+                                       value="<%= componente.id %>"
+                                       data-precio="<%= componente.precio %>"
+                                       <%= componente.por_defecto ? 'checked' : '' %>> <!-- AQUÍ ESTÁ EL CHECK POR DEFECTO -->
+                                <label class="btn btn-outline-secondary" for="c_<%= index %>_<%= componente.id %>">
+                                    <%= componente.nombre %>
+                                    <% if(componente.precio > 0){ %> <small>+$<%=componente.precio/1000%>k</small> <% } %>
+                                </label>
+                            <% }); %>
                         </div>
-
-                        <div class="card-body">
-                            <input type="hidden" name="clientes[<%= index %>][menuId]" value="<%= clienteData.menu.id %>">
-                            <div class="row">
-                                <% Object.keys(clienteData.grupos).forEach(nombreGrupo => { %>
-                                    <div class="col-md-6 mb-3">
-                                        <h6 class="fw-bold border-bottom pb-1"><%= nombreGrupo %></h6>
-                                        <% const grupo = clienteData.grupos[nombreGrupo]; %>
-                                        <% grupo.componentes.forEach((componente) => { %>
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input componente-checkbox"
-                                                    type="checkbox"
-                                                    name="clientes[<%= index %>][<%= grupo.id %>][]"
-                                                    id="c_<%= index %>_<%= componente.id %>"
-                                                    value="<%= componente.id %>"
-                                                    data-precio="<%= componente.precio_adicional || 0 %>"
-                                                    data-nombre="<%= componente.nombre %>">
-                                                
-                                                <label class="form-check-label d-flex justify-content-between align-items-center w-100 pe-2" for="c_<%= index %>_<%= componente.id %>">
-                                                    <span><%= componente.nombre %></span>
-                                                    <!-- MOSTRAR PRECIO EXTRA -->
-                                                    <% if (parseFloat(componente.precio_adicional) > 0) { %>
-                                                        <span class="badge bg-light text-dark border">
-                                                            +$<%= parseFloat(componente.precio_adicional).toLocaleString('es-CO') %>
-                                                        </span>
-                                                    <% } %>
-                                                </label>
-                                            </div>
-                                        <% }); %>
-                                    </div>
-                                <% }); %>
-                            </div>
-                            <div class="mt-2">
-                                <input type="text" name="clientes[<%= index %>][notas]" class="form-control form-control-sm" placeholder="Notas...">
-                            </div>
-                        </div>
-                    </div>
-                <% }); %>
-            </div>
-
-            <div class="col-lg-4">
-                <div class="card resumen-card shadow-sm">
-                    <div class="card-header bg-dark text-white"><h4 class="mb-0">Resumen</h4></div>
-                    <div class="card-body" id="resumen-pedido"><p class="text-muted">Seleccione opciones...</p></div>
-                    <div class="card-footer bg-light text-end">
-                         <h3>Total: <span id="total-pedido">$0.00</span></h3>
-                        <button type="submit" class="btn btn-success w-100 btn-lg">ENVIAR A COCINA</button>
-                    </div>
+                    <% }); %>
+                    <input type="text" name="clientes[<%= index %>][notas]" class="form-control input-notas mt-1" placeholder="Nota cocina...">
                 </div>
             </div>
+        <% }); %>
+
+        <div class="espacio-footer"></div>
+        <div class="resumen-flotante d-flex justify-content-between align-items-center">
+            <div><small class="text-muted d-block">Total</small><h3 class="m-0 fw-bold text-primary" id="total-pedido">$0</h3></div>
+            <button type="submit" id="btn-enviar" class="btn btn-success btn-lg fw-bold px-4">ENVIAR <i class="fas fa-paper-plane"></i></button>
         </div>
     </form>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('pedido-form');
-        const resumenDiv = document.getElementById('resumen-pedido');
         const totalSpan = document.getElementById('total-pedido');
+        const btnEnviar = document.getElementById('btn-enviar');
 
-        // Función para actualizar el resumen y sumar precios extra
-        function actualizarVista() {
-            let totalGeneral = 0;
-            let resumenHtml = '';
-            const clienteCards = document.querySelectorAll('.cliente-card');
-
-            clienteCards.forEach(card => {
-                const precioBase = parseFloat(card.dataset.precioBase);
-                const nombreMenu = card.dataset.menuNombre;
-                const clienteNum = card.dataset.clienteNumero;
-                
-                let subtotalCliente = precioBase;
-                let itemsHtml = '';
-                const checkboxes = card.querySelectorAll('.componente-checkbox:checked');
-                
-                checkboxes.forEach(cb => {
-                    // SUMAR EL PRECIO ADICIONAL
-                    const precioExtra = parseFloat(cb.dataset.precio);
-                    subtotalCliente += precioExtra;
-                    
-                    itemsHtml += `<li>${cb.dataset.nombre}`;
-                    if (precioExtra > 0) {
-                        itemsHtml += ` <small class="fw-bold text-success">(+$${precioExtra.toLocaleString()})</small>`;
-                    }
-                    itemsHtml += `</li>`;
+        function actualizarTotal() {
+            let total = 0;
+            document.querySelectorAll('.cliente-card').forEach(card => {
+                total += parseFloat(card.dataset.precioBase);
+                card.querySelectorAll('.componente-checkbox:checked').forEach(chk => {
+                    total += parseFloat(chk.dataset.precio || 0);
                 });
-                
-                resumenHtml += `
-                    <div class="mb-3 border-bottom pb-2">
-                        <div class="d-flex justify-content-between fw-bold">
-                            <span>Cliente ${clienteNum}</span>
-                            <span>${nombreMenu}</span>
-                        </div>
-                        <ul class="ps-3 mb-1 small text-muted">${itemsHtml || '<li>Básico</li>'}</ul>
-                        <div class="text-end fw-bold">Sub: $${subtotalCliente.toLocaleString()}</div>
-                    </div>`;
-
-                totalGeneral += subtotalCliente;
             });
-
-            resumenDiv.innerHTML = resumenHtml || '<p class="text-center">Seleccione...</p>';
-            totalSpan.textContent = `$${totalGeneral.toLocaleString()}`;
+            totalSpan.textContent = `$${total.toLocaleString('es-CO')}`;
         }
 
-        form.addEventListener('change', actualizarVista);
-        actualizarVista();
+        form.addEventListener('change', actualizarTotal);
+        form.addEventListener('submit', () => { btnEnviar.disabled = true; btnEnviar.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; });
+        actualizarTotal();
     });
 </script>
-
 <%- include('../partials/footer') %>

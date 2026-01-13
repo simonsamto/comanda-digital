@@ -2,50 +2,72 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2>Configurando: <strong><%= menu.nombre %></strong></h2>
-            <p class="text-muted">Seleccione los componentes que estarán disponibles hoy para este menú.</p>
-        </div>
-        <a href="/admin/gestion-menu" class="btn btn-secondary">Volver a Menús</a>
+        <h2>Configurando: <strong><%= menu.nombre %></strong></h2>
+        <a href="/admin/gestion-menu" class="btn btn-secondary">Volver</a>
     </div>
 
     <form action="/admin/menus/<%= menu.id %>/configurar" method="POST">
-        <div class="card">
-            <div class="card-body">
-                <% if (!grupos || grupos.length === 0) { %>
-                    <div class="alert alert-warning">No hay componentes creados en el sistema.</div>
-                <% } else { %>
-                    <div class="row">
-                        <% grupos.forEach(grupo => { %>
-                            <div class="col-md-4 col-lg-3 mb-4">
-                                <h4><%= grupo.nombre %></h4>
-                                <hr class="mt-0">
-                                <% if (grupo.componentes && grupo.componentes.length > 0) { %>
-                                    <% grupo.componentes.forEach(componente => { %>
-                                        <div class="form-check">
-                                            <input 
-                                                class="form-check-input" 
-                                                type="checkbox" 
-                                                name="componenteIds" 
-                                                value="<%= componente.id %>" 
-                                                id="comp-<%= componente.id %>"
-                                                <%= selectedComponentIds.has(componente.id) ? 'checked' : '' %>
-                                            >
-                                            <label class="form-check-label" for="comp-<%= componente.id %>">
-                                                <%= componente.nombre %>
-                                            </label>
-                                        </div>
-                                    <% }); %>
-                                <% } else { %>
-                                    <p class="text-muted fst-italic">Sin componentes</p>
-                                <% } %>
-                            </div>
-                        <% }); %>
-                    </div>
-                <% } %>
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <small class="text-muted"><i class="fas fa-info-circle"></i> Marca los componentes disponibles hoy.</small>
             </div>
-            <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary btn-lg">
+            <div class="card-body">
+                <div class="row">
+                    <!-- BUCLE DE GRUPOS (Esto es lo que faltaba) -->
+                    <% grupos.forEach(grupo => { %>
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 border-light shadow-sm">
+                                <div class="card-header fw-bold bg-white text-primary border-bottom">
+                                    <%= grupo.nombre %>
+                                </div>
+                                <ul class="list-group list-group-flush">
+                                    <!-- BUCLE DE COMPONENTES -->
+                                    <% grupo.componentes.forEach(comp => { 
+                                        const conf = (typeof configMap !== 'undefined' && configMap[comp.id]) ? configMap[comp.id] : {};
+                                        const isSelected = conf.selected === true;
+                                        const isDefault = conf.por_defecto === true;
+                                    %>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                                            
+                                            <!-- CHECKBOX DISPONIBLE -->
+                                            <div class="form-check m-0">
+                                                <input class="form-check-input border-secondary" 
+                                                       type="checkbox" 
+                                                       name="comps[id_<%= comp.id %>][sel]" 
+                                                       id="sel_<%= comp.id %>" 
+                                                       <%= isSelected ? 'checked' : '' %>>
+                                                
+                                                <label class="form-check-label user-select-none" for="sel_<%= comp.id %>">
+                                                    <%= comp.nombre %>
+                                                    <% if (comp.precio_adicional > 0) { %>
+                                                        <span class="badge bg-light text-dark border ms-1">+$<%= comp.precio_adicional %></span>
+                                                    <% } %>
+                                                </label>
+                                            </div>
+
+                                            <!-- CHECKBOX DEFECTO -->
+                                            <div class="form-check m-0" title="Marcar por defecto">
+                                                <input class="form-check-input border-warning" 
+                                                       type="checkbox" 
+                                                       name="comps[id_<%= comp.id %>][def]" 
+                                                       id="def_<%= comp.id %>"
+                                                       style="accent-color: #ffc107;"
+                                                       <%= isDefault ? 'checked' : '' %>>
+                                                <label class="form-check-label small text-muted" for="def_<%= comp.id %>">
+                                                    Defecto
+                                                </label>
+                                            </div>
+
+                                        </li>
+                                    <% }); %>
+                                </ul>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+            <div class="card-footer bg-light text-end sticky-bottom">
+                <button type="submit" class="btn btn-primary btn-lg shadow">
                     <i class="fas fa-save"></i> Guardar Configuración
                 </button>
             </div>

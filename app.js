@@ -18,8 +18,12 @@ app.set('socketio', io); // Guardamos io para usarlo en las rutas
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Aumentamos el límite y permitimos objetos anidados complejos (extended: true)
+app.use(express.urlencoded({ extended: true, limit: '50mb', parameterLimit: 50000 }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+
 
 app.use(session({
     secret: 'secreto_super_seguro',
