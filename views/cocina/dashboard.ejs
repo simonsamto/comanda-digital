@@ -1,49 +1,34 @@
 <%- include('../partials/header') %>
 
 <style>
-    /* Animación para nuevos pedidos */
-    .nuevo-pedido-animacion {
-        animation: flashGreen 2s infinite;
-        border: 2px solid #28a745 !important;
-    }
-    @keyframes flashGreen {
-        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
-        70% { box-shadow: 0 0 0 20px rgba(40, 167, 69, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
-    }
-    
+    .nuevo-pedido-animacion { animation: flashGreen 2s infinite; border: 2px solid #28a745 !important; }
+    @keyframes flashGreen { 0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(40, 167, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); } }
+    .alerta-demora { animation: panico 0.5s infinite alternate !important; border: 4px solid red !important; color: white !important; }
+    .alerta-demora .card-header, .alerta-demora .card-footer { background-color: transparent !important; color: inherit !important; border-color: white !important; }
+    .alerta-demora .badge { background-color: yellow !important; color: black !important; }
+    @keyframes panico { 0% { background-color: #ff0000; transform: scale(1); } 50% { background-color: #0000ff; transform: scale(1.02); } 100% { background-color: #ff0000; transform: scale(1); } }
     .reloj-cocina { font-family: monospace; font-weight: bold; font-size: 1.2rem; }
 </style>
 
 <div class="container-fluid mt-4">
-    <!-- BARRA SUPERIOR -->
     <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm">
         <div class="d-flex align-items-center gap-3">
             <h1 class="m-0"><i class="fas fa-fire-alt text-danger"></i> Cocina</h1>
             <span class="badge bg-dark fs-5" id="contador-pedidos">Cargando...</span>
         </div>
-        
         <div class="d-flex align-items-center gap-3">
-            <!-- Reloj en vivo -->
             <div class="reloj-cocina text-primary" id="reloj">00:00:00</div>
-            
-            <!-- Botón para activar sonido (Obligatorio por políticas de navegadores) -->
-            <button class="btn btn-outline-danger btn-sm" id="btn-activar-sonido">
-                <i class="fas fa-volume-mute"></i> Activar Sonido
-            </button>
-            
+            <button class="btn btn-outline-danger btn-sm" id="btn-activar-sonido"><i class="fas fa-volume-mute"></i> Sonido</button>
             <a href="/cocina" class="btn btn-outline-primary btn-sm"><i class="fas fa-sync-alt"></i></a>
         </div>
     </div>
 
-    <!-- CONTENEDOR DE PEDIDOS -->
     <div class="row" id="pedidos-container">
         <% if (pedidos.length === 0) { %>
             <div id="no-pedidos-placeholder" class="col-12">
                 <div class="alert alert-secondary text-center py-5">
                     <h1 class="display-4"><i class="fas fa-check-circle"></i></h1>
                     <h3>Todo al día</h3>
-                    <p class="text-muted">Esperando nuevas comandas...</p>
                 </div>
             </div>
         <% } else { %>
@@ -54,9 +39,6 @@
     </div>
 </div>
 
-<!-- ============================================= -->
-<!-- PLANTILLA OCULTA PARA JAVASCRIPT (SOCKET.IO) -->
-<!-- ============================================= -->
 <template id="comanda-template">
     <div class="col-md-6 col-lg-4 mb-4 comanda-card">
         <div class="card h-100 shadow-sm border-danger">
@@ -65,17 +47,14 @@
                 <span class="badge bg-light text-danger border border-danger">#<span class="pedido-id"></span></span>
             </div>
             <div class="card-body">
-                <h5 class="card-title text-muted border-bottom pb-2">
-                    <i class="far fa-clock"></i> <span class="pedido-hora"></span>
-                </h5>
-                <ul class="list-group list-group-flush bg-transparent items-list fs-5">
-                    <!-- Los items se inyectan aquí -->
-                </ul>
+                <h6 class="card-subtitle mb-2 text-muted"><i class="far fa-clock"></i> <span class="pedido-hora"></span></h6>
+                <hr>
+                <div class="items-list"></div>
             </div>
-            <div class="card-footer bg-white text-center pb-3 pt-3">
+            <div class="card-footer bg-white text-center pb-3">
                 <form class="estado-form" method="POST">
                     <input type="hidden" name="nuevoEstado" value="elaborado">
-                    <button type="submit" class="btn btn-warning w-100 btn-lg fw-bold border-2 border-dark shadow">
+                    <button type="submit" class="btn btn-warning w-100 fw-bold border-2 border-dark shadow">
                         <i class="fas fa-check"></i> TERMINAR PLATO
                     </button>
                 </form>
@@ -91,109 +70,84 @@
         const audio = new Audio('/sounds/notification.mp3');
         let sonidoActivado = false;
 
-        // --- 1. RELOJ EN VIVO ---
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('reloj').innerText = now.toLocaleTimeString();
-        }, 1000);
-
-        // --- 2. ACTIVAR SONIDO ---
-        const btnSonido = document.getElementById('btn-activar-sonido');
-        btnSonido.addEventListener('click', () => {
-            audio.play().then(() => {
-                sonidoActivado = true;
-                btnSonido.innerHTML = '<i class="fas fa-volume-up"></i> Sonido Activo';
-                btnSonido.classList.replace('btn-outline-danger', 'btn-success');
-                btnSonido.disabled = true;
-            }).catch(e => alert("Error al activar audio: " + e));
+        setInterval(() => document.getElementById('reloj').innerText = new Date().toLocaleTimeString(), 1000);
+        document.getElementById('btn-activar-sonido').addEventListener('click', function() {
+            audio.play().then(() => { sonidoActivado = true; this.classList.replace('btn-outline-danger', 'btn-success'); this.disabled=true; }).catch(e=>alert(e));
         });
 
-        // --- 3. SOCKET.IO: RECIBIR PEDIDO ---
+        // MODO PÁNICO
+        setInterval(() => {
+            const ahora = new Date();
+            document.querySelectorAll('.comanda-card').forEach(card => {
+                const fecha = new Date(card.dataset.fecha);
+                if ((ahora - fecha) > 60000 && !card.querySelector('.border-success')) {
+                    card.querySelector('.card').classList.add('alerta-demora');
+                }
+            });
+        }, 5000);
+
         socket.on('nuevo_pedido', function (pedido) {
-            console.log("🔔 Nuevo pedido recibido:", pedido);
             if (sonidoActivado) { audio.currentTime = 0; audio.play(); }
-            const placeholder = document.getElementById('no-pedidos-placeholder');
-            if (placeholder) placeholder.style.display = 'none';
+            const ph = document.getElementById('no-pedidos-placeholder');
+            if (ph) ph.style.display = 'none';
 
             const template = document.getElementById('comanda-template');
             const clone = template.content.cloneNode(true);
             const cardRoot = clone.querySelector('.comanda-card');
             
             cardRoot.id = `pedido-${pedido.id}`;
+            cardRoot.dataset.fecha = new Date().toISOString();
             cardRoot.classList.add('nuevo-pedido-animacion');
+            
             clone.querySelector('.mesa-numero').textContent = pedido.mesa.numero;
             clone.querySelector('.pedido-id').textContent = pedido.id;
             clone.querySelector('.pedido-hora').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             clone.querySelector('.estado-form').action = `/cocina/pedido/${pedido.id}/estado`;
 
-            const lista = clone.querySelector('.items-list'); // Asegúrate que el template tenga <div class="items-list"></div> en vez de UL
-
+            const lista = clone.querySelector('.items-list');
             pedido.items.forEach(item => {
-                // 1. Agrupar en JS (Igual que en EJS)
                 const grupos = {};
                 const orden = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida'];
-                
-                if (item.componentes) {
-                    item.componentes.forEach(comp => {
-                        // OJO: Socket.io debe enviar el grupo. Asegúrate que en meseroRoutes.js el include tenga el Grupo
-                        const gName = comp.grupo ? comp.grupo.nombre : 'Otros';
-                        if(!grupos[gName]) grupos[gName] = [];
-                        grupos[gName].push(comp.nombre);
-                    });
-                }
-
-                // 2. Construir HTML
-                let gruposHtml = '';
-                Object.keys(grupos).sort((a,b) => {
-                     // Lógica de orden simple para JS
-                     return (orden.indexOf(a) === -1 ? 99 : orden.indexOf(a)) - (orden.indexOf(b) === -1 ? 99 : orden.indexOf(b));
-                }).forEach(gName => {
-                    gruposHtml += `
-                        <div class="d-flex mb-1">
-                            <span class="badge bg-secondary me-2 align-self-start" style="min-width: 80px;">${gName}</span>
-                            <span class="fw-bold">${grupos[gName].join(', ')}</span>
-                        </div>
-                    `;
+                if(item.componentes) item.componentes.forEach(c => {
+                    const g = c.grupo ? c.grupo.nombre : 'Extras';
+                    if(!grupos[g]) grupos[g] = [];
+                    grupos[g].push(c.nombre);
                 });
 
-                const divItem = document.createElement('div');
-                divItem.className = 'mb-3 border-bottom pb-2';
-                divItem.innerHTML = `
-                    <strong class="text-primary">Cliente ${item.cliente_numero}</strong>
-                    <div class="ms-2 mt-1">${gruposHtml}</div>
+                let gruposHtml = '';
+                Object.keys(grupos).sort((a,b) => (orden.indexOf(a)===-1?99:orden.indexOf(a)) - (orden.indexOf(b)===-1?99:orden.indexOf(b))).forEach(g => {
+                    gruposHtml += `<div class="d-flex mb-1"><span class="badge bg-secondary me-2" style="min-width:80px;">${g}</span><span class="fw-bold">${grupos[g].join(', ')}</span></div>`;
+                });
+
+                const div = document.createElement('div');
+                div.className = 'mb-3 border-bottom pb-2';
+                // HTML DEL ITEM EN TIEMPO REAL
+                div.innerHTML = `
+                    <strong class="text-primary" style="font-size: 1.1em;">Cliente ${item.cliente_numero}</strong>
+                    <div class="fw-bold text-dark fs-5 my-1">🍽️ ${item.menu_nombre || 'Plato'}</div>
+                    <div class="ms-2 mt-1">${gruposHtml || '<div class="text-muted small">Sin extras</div>'}</div>
                     ${item.notas ? `<div class="alert alert-warning py-1 px-2 mt-1 mb-0 small"><strong>Nota:</strong> ${item.notas}</div>` : ''}
                 `;
-                lista.appendChild(divItem);
+                lista.appendChild(div);
             });
 
             document.getElementById('pedidos-container').prepend(clone);
             actualizarContador();
         });
 
-        // --- 4. SOCKET.IO: ACTUALIZAR ESTADOS ---
         socket.on('actualizacion_estado', (data) => {
             if (data.nuevoEstado === 'elaborado' || data.nuevoEstado === 'entregado') {
                 const card = document.getElementById(`pedido-${data.pedidoId}`);
                 if (card) {
-                    card.style.transition = 'all 0.5s';
-                    card.style.opacity = '0';
-                    card.style.transform = 'scale(0.8)';
+                    card.style.transition = 'all 0.5s'; card.style.opacity = '0';
                     setTimeout(() => { card.remove(); actualizarContador(); }, 500);
                 }
             }
         });
 
         function actualizarContador() {
-            const count = document.querySelectorAll('.comanda-card').length;
-            document.getElementById('contador-pedidos').textContent = `${count} Pendientes`;
+            document.getElementById('contador-pedidos').textContent = `${document.querySelectorAll('.comanda-card').length} Pendientes`;
         }
-
-        // --- 5. RECARGA DE SEGURIDAD (CADA 60 SEGUNDOS) ---
-        // Esto previene que la pantalla se quede desactualizada si el WiFi falla
-        setTimeout(() => location.reload(), 60000);
-
-        actualizarContador();
     });
 </script>
-
 <%- include('../partials/footer') %>

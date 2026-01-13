@@ -9,30 +9,41 @@
         </div>
     </div>
 
+    <!-- Mensajes Flash -->
+    <%- include('../partials/messages') %>
+
     <div class="list-group">
         <% menus.forEach(menu => { %>
             <div class="list-group-item">
                 <div class="row align-items-center">
                     <div class="col-md-5">
                         <h5 class="mb-1"><%= menu.nombre %></h5>
-                        <small class="text-muted">Precio Base: $<%= parseFloat(menu.precio_base).toFixed(2) %></small>
+                        <small class="text-muted">Precio Base: $<%= parseFloat(menu.precio_base).toLocaleString('es-CO') %></small>
                     </div>
-                    <div class="col-md-2">
-                        <!-- Switch para activar/desactivar (lo haremos funcional más adelante) -->
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="switch-<%= menu.id %>" <%= menu.activo ? 'checked' : '' %>>
-                            <label class="form-check-label" for="switch-<%= menu.id %>"><%= menu.activo ? 'Activo' : 'Inactivo' %></label>
+                    
+                    <!-- SWITCH FUNCIONAL -->
+                    <div class="col-md-2 text-center">
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input switch-estado" 
+                                   type="checkbox" 
+                                   role="switch" 
+                                   id="switch-<%= menu.id %>" 
+                                   data-id="<%= menu.id %>"
+                                   <%= menu.activo ? 'checked' : '' %>>
+                            <label class="form-check-label" for="switch-<%= menu.id %>" id="label-<%= menu.id %>">
+                                <%= menu.activo ? 'Activo' : 'Inactivo' %>
+                            </label>
                         </div>
                     </div>
+
                     <div class="col-md-5 text-end">
                         <a href="/admin/menus/<%= menu.id %>/configurar" class="btn btn-success btn-sm">
-                            <i class="fas fa-cog"></i> Configurar Componentes
+                            <i class="fas fa-cog"></i> Configurar
                         </a>
-                        <!-- NUEVOS BOTONES DE EDITAR Y ELIMINAR -->
                         <a href="/admin/menus/editar/<%= menu.id %>" class="btn btn-warning btn-sm">
                             <i class="fas fa-edit"></i> Editar
                         </a>
-                        <form action="/admin/menus/eliminar/<%= menu.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de que desea eliminar el menú <%= menu.nombre %>?');">
+                        <form action="/admin/menus/eliminar/<%= menu.id %>" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar menú?');">
                             <button type="submit" class="btn btn-danger btn-sm">
                                 <i class="fas fa-trash"></i> Eliminar
                             </button>
@@ -43,5 +54,42 @@
         <% }); %>
     </div>
 </div>
+
+<!-- SCRIPT AJAX PARA EL SWITCH -->
+<script>
+    document.querySelectorAll('.switch-estado').forEach(switchEl => {
+        switchEl.addEventListener('change', async function() {
+            const menuId = this.dataset.id;
+            const label = document.getElementById('label-' + menuId);
+            
+            // Deshabilitar temporalmente para evitar doble clic
+            this.disabled = true;
+
+            try {
+                const response = await fetch(`/admin/menus/toggle-estado/${menuId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    // Actualizar etiqueta visualmente
+                    label.textContent = data.nuevoEstado ? 'Activo' : 'Inactivo';
+                    // Feedback visual (opcional)
+                    label.className = `form-check-label fw-bold ${data.nuevoEstado ? 'text-success' : 'text-muted'}`;
+                } else {
+                    // Si falló, revertir el switch
+                    this.checked = !this.checked;
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                this.checked = !this.checked;
+                alert('Error de conexión');
+            } finally {
+                this.disabled = false;
+            }
+        });
+    });
+</script>
 
 <%- include('../partials/footer') %>

@@ -17,7 +17,7 @@
         <% } else { %>
             <% pedidos.forEach(pedido => { %>
                 
-                <!-- Cálculo del Total -->
+                <!-- CÁLCULO DEL TOTAL -->
                 <% 
                     let totalPedido = 0;
                     let itemsCount = 0;
@@ -42,11 +42,14 @@
                             <div class="text-center mb-4">
                                 <h6 class="text-muted">Total a Pagar</h6>
                                 <h1 class="display-4 fw-bold text-success">$<%= totalPedido.toLocaleString('es-CO') %></h1>
-                                <span class="badge bg-secondary"><%= itemsCount %> items</span>
+                                
+                                <!-- BOTÓN DE DETALLES (ANTES ERA SOLO UN BADGE) -->
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2 rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#detalleModal<%= pedido.id %>">
+                                    <i class="fas fa-eye me-1"></i> Ver los <%= itemsCount %> items
+                                </button>
                             </div>
 
                             <div class="mt-auto">
-                                <!-- Botón que abre el Modal -->
                                 <button type="button" class="btn btn-success w-100 btn-lg py-3" data-bs-toggle="modal" data-bs-target="#cobrarModal<%= pedido.id %>">
                                     <i class="fas fa-hand-holding-usd me-2"></i> PROCESAR PAGO
                                 </button>
@@ -55,7 +58,71 @@
                     </div>
                 </div>
 
-                <!-- MODAL DE COBRO PARA ESTE PEDIDO -->
+                <!-- ========================================== -->
+                <!-- MODAL DE DETALLE DE ÍTEMS (NUEVO)         -->
+                <!-- ========================================== -->
+                <div class="modal fade" id="detalleModal<%= pedido.id %>" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-light">
+                                <h5 class="modal-title fw-bold">Detalle Mesa <%= pedido.mesa.numero %></h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    <% pedido.items.forEach(item => { %>
+                                        <li class="list-group-item">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <!-- Nombre del Plato -->
+                                                    <div class="fw-bold text-dark">
+                                                        <%= item.menu_nombre || 'Plato' %>
+                                                    </div>
+                                                    <!-- Cliente -->
+                                                    <small class="text-muted"><i class="fas fa-user"></i> Cliente <%= item.cliente_numero %></small>
+                                                    
+                                                    <!-- Lista de Adicionales -->
+                                                    <% if (item.componentes && item.componentes.length > 0) { %>
+                                                        <ul class="mb-0 mt-1 small ps-3 text-secondary">
+                                                            <% item.componentes.forEach(comp => { %>
+                                                                <li>
+                                                                    <%= comp.nombre %>
+                                                                    <% if (comp.precio_adicional > 0) { %>
+                                                                        <span class="text-success fw-bold">(+$<%= parseFloat(comp.precio_adicional).toLocaleString() %>)</span>
+                                                                    <% } %>
+                                                                </li>
+                                                            <% }); %>
+                                                        </ul>
+                                                    <% } %>
+                                                </div>
+                                                
+                                                <!-- Precio del Item Completo -->
+                                                <% 
+                                                    let subtotalItem = parseFloat(item.precio_unitario || 0);
+                                                    if(item.componentes) item.componentes.forEach(c => subtotalItem += parseFloat(c.precio_adicional || 0));
+                                                %>
+                                                <div class="fw-bold text-end">
+                                                    $<%= subtotalItem.toLocaleString('es-CO') %>
+                                                    <% if (parseFloat(item.precio_unitario) > 0) { %>
+                                                        <div style="font-size:0.7em" class="text-muted fw-normal">Base: $<%= parseFloat(item.precio_unitario).toLocaleString() %></div>
+                                                    <% } %>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    <% }); %>
+                                </ul>
+                            </div>
+                            <div class="modal-footer bg-light d-flex justify-content-between">
+                                <span class="fw-bold h5 mb-0">Total: $<%= totalPedido.toLocaleString('es-CO') %></span>
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- MODAL DE PROCESAR PAGO (YA EXISTENTE)      -->
+                <!-- ========================================== -->
                 <div class="modal fade" id="cobrarModal<%= pedido.id %>" tabindex="-1">
                     <div class="modal-dialog">
                         <div class="modal-content">
@@ -63,20 +130,8 @@
                                 <h5 class="modal-title">Cobrar Mesa <%= pedido.mesa.numero %></h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
-                            <form action="/cajero/pedido/<%= pedido.id %>/estado" method="POST"> <!-- Ajusta la ruta según cocinaController o cajeroController -->
-                                <!-- NOTA: En el controller te puse 'cobrarPedido', la ruta debería ser /cajero/cobrar/:pedidoId -->
-                                <!-- Ajuste aquí: -->
-                            </form>
-                            
-                            <!-- CORRECCIÓN DEL FORMULARIO -->
-                            <form action="/cajero/pedido/<%= pedido.id %>/estado" method="POST" id="form-cobro-<%= pedido.id %>">
-                                <!-- Espera, en el código de rutas de cajero normalmente es /cajero/cobrar/:id. Ajustemos el action: -->
-                            </form>
-                            
-                            <form action="/cajero/pedido/<%= pedido.id %>/estado" method="POST" class="d-none"></form> <!-- Dummy -->
-
                             <form action="/cajero/cobrar/<%= pedido.id %>" method="POST">
-                                <div class="modal-body text-start">
+                                <div class="modal-body">
                                     <h3 class="text-center text-success fw-bold mb-4">$<%= totalPedido.toLocaleString('es-CO') %></h3>
                                     
                                     <div class="mb-3">
@@ -97,8 +152,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Selector de Empresa (Oculto) -->
-                                    <div id="div_empresa_<%= pedido.id %>" class="mb-3 d-none animate__animated animate__fadeIn">
+                                    <div id="div_empresa_<%= pedido.id %>" class="mb-3 d-none">
                                         <label class="form-label fw-bold">Seleccionar Empresa:</label>
                                         <select name="empresa_id" class="form-select border-primary">
                                             <option value="">-- Seleccione --</option>
@@ -116,6 +170,7 @@
                         </div>
                     </div>
                 </div>
+
             <% }); %>
         <% } %>
     </div>

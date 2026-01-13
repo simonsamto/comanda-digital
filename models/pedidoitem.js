@@ -18,8 +18,9 @@ module.exports = (sequelize, DataTypes) => {
     pedido_id: { type: DataTypes.INTEGER, allowNull: false },
     cliente_numero: { type: DataTypes.INTEGER, allowNull: false },
     notas: { type: DataTypes.STRING, allowNull: true },
+    precio_unitario: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0.00 },
     // NUEVO CAMPO:
-    precio_unitario: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0.00 }
+    menu_nombre: { type: DataTypes.STRING, allowNull: true } 
   }, {
     sequelize,
     modelName: 'PedidoItem',

@@ -1,168 +1,162 @@
 <%- include('../partials/header') %>
 
 <style>
-    /* --- ESTILOS DEL MAPA VISUAL (PC/TABLET) --- */
+    /* Estilos del Mapa y Lista */
     #vista-mapa {
-        position: relative;
-        width: 100%;
-        height: 600px;
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        overflow: auto; /* Permite scroll si el mapa es gigante */
-        /* Patrón de fondo sutil */
-        background-image: radial-gradient(#ced4da 1px, transparent 1px);
-        background-size: 20px 20px;
+        position: relative; width: 100%; height: 600px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; overflow: auto;
+        background-image: radial-gradient(#ced4da 1px, transparent 1px); background-size: 20px 20px;
     }
-
     .mesa-real {
-        position: absolute;
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-        transition: transform 0.2s;
-        text-decoration: none !important;
-        color: white;
-        z-index: 10;
+        position: absolute; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: transform 0.2s; text-decoration: none !important; color: white; z-index: 10;
     }
     .mesa-real:hover { transform: scale(1.05); z-index: 20; }
-
-    /* --- ESTILOS DE LA VISTA DE LISTA (CELULAR) --- */
+    
     .mesa-card-mobile {
-        height: 100px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        border-radius: 10px;
-        color: white;
-        text-decoration: none !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: transform 0.1s;
+        height: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px; color: white;
+        text-decoration: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.1s;
     }
     .mesa-card-mobile:active { transform: scale(0.95); }
 
-    /* --- COLORES DE ESTADO (COMPARTIDOS) --- */
     .bg-libre { background-color: #198754; border: 2px solid #146c43; }
     .bg-ocupada { background-color: #dc3545; border: 2px solid #b02a37; }
     .bg-recoger { background-color: #0dcaf0; border: 2px solid #0aa2c0; color: #000; animation: pulse-blue 2s infinite; }
     .bg-caja { background-color: #ffc107; border: 2px solid #cc9a06; color: #000; }
 
-    @keyframes pulse-blue {
-        0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); }
-    }
-
-    /* Ocultar elementos según la vista activa */
+    @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); } 100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); } }
     .d-none-custom { display: none !important; }
 </style>
 
 <div class="container-fluid mt-3">
     
-    <!-- CONTROLES SUPERIORES -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="m-0"><i class="fas fa-map-marked-alt"></i> Mesas</h2>
         
-        <!-- Botones para cambiar de vista -->
         <div class="btn-group" role="group">
+            <!-- BOTÓN PARA VER MENÚS DEL DÍA -->
+            <button type="button" class="btn btn-warning me-2 fw-bold" data-bs-toggle="modal" data-bs-target="#modalMenusHoy">
+                <i class="fas fa-utensils"></i> Oferta Hoy
+            </button>
+
             <button type="button" class="btn btn-outline-primary active" id="btn-ver-lista" onclick="cambiarVista('lista')">
-                <i class="fas fa-th-large"></i> <span class="d-none d-md-inline">Lista</span>
+                <i class="fas fa-th-large"></i>
             </button>
             <button type="button" class="btn btn-outline-primary" id="btn-ver-mapa" onclick="cambiarVista('mapa')">
-                <i class="fas fa-map"></i> <span class="d-none d-md-inline">Mapa</span>
+                <i class="fas fa-map"></i>
             </button>
         </div>
     </div>
 
-    <!-- LEYENDA (Solo visible en pantallas medianas hacia arriba para ahorrar espacio en móvil) -->
-    <div class="d-none d-md-block mb-3 small">
-        <span class="badge bg-success me-1">Libre</span>
-        <span class="badge bg-danger me-1">Ocupado</span>
-        <span class="badge bg-info text-dark me-1">Recoger</span>
-        <span class="badge bg-warning text-dark">Caja</span>
-    </div>
-
-    <!-- ============================================= -->
-    <!-- VISTA 1: LISTA / CUADRÍCULA (OPTIMIZADO PARA MÓVIL) -->
-    <!-- ============================================= -->
+    <!-- VISTA LISTA (MÓVIL) -->
     <div id="vista-lista" class="row g-3">
         <% mesas.forEach(mesa => { %>
-            <!-- Lógica de Estado y Enlace -->
             <% 
-                let colorClass = 'bg-libre';
-                let icon = 'fa-chair';
-                let estadoTexto = 'Libre';
-                let link = `/mesero/mesa/${mesa.id}/clientes`;
-                let esFormulario = false;
-
-                if (mesa.estado === 'ocupado') {
-                    colorClass = 'bg-ocupada'; icon = 'fa-utensils'; estadoTexto = 'Ocupada'; link = '#';
-                } else if (mesa.estado === 'para_recoger') {
-                    colorClass = 'bg-recoger'; icon = 'fa-bell'; estadoTexto = '¡RECOGER!'; esFormulario = true;
-                } else if (mesa.estado === 'por_cobrar') {
-                    colorClass = 'bg-caja'; icon = 'fa-cash-register'; estadoTexto = 'Caja'; link = '#';
-                }
+                let colorClass = 'bg-libre'; let icon = 'fa-chair'; let texto = 'Libre'; let link = `/mesero/mesa/${mesa.id}/clientes`; let esForm = false;
+                if (mesa.estado === 'ocupado') { colorClass = 'bg-ocupada'; icon = 'fa-utensils'; texto = 'Ocupada'; link = '#'; }
+                else if (mesa.estado === 'para_recoger') { colorClass = 'bg-recoger'; icon = 'fa-bell'; texto = '¡RECOGER!'; esForm = true; }
+                else if (mesa.estado === 'por_cobrar') { colorClass = 'bg-caja'; icon = 'fa-cash-register'; texto = 'Caja'; link = '#'; }
             %>
-
-            <!-- Renderizado de Tarjeta Móvil -->
             <div class="col-4 col-sm-3 col-md-2">
-                <% if (esFormulario) { %>
+                <% if (esForm) { %>
                     <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="height:100%">
                         <button type="submit" class="card w-100 mesa-card-mobile <%= colorClass %> border-0 p-0" onclick="return confirm('¿Entregar?');">
-                            <i class="fas <%= icon %> fa-2x mb-1"></i>
-                            <div class="fw-bold fs-5"><%= mesa.numero %></div>
-                            <small style="font-size: 0.7rem;"><%= estadoTexto %></small>
+                            <i class="fas <%= icon %> fa-2x mb-1"></i><div class="fw-bold fs-5"><%= mesa.numero %></div><small style="font-size: 0.7rem;"><%= texto %></small>
                         </button>
                     </form>
                 <% } else { %>
                     <a href="<%= link %>" class="mesa-card-mobile <%= colorClass %>" <%= link === '#' ? 'style="opacity:0.6; cursor:not-allowed;"' : '' %>>
-                        <i class="fas <%= icon %> fa-2x mb-1"></i>
-                        <div class="fw-bold fs-5"><%= mesa.numero %></div>
-                        <small style="font-size: 0.7rem;"><%= estadoTexto %></small>
+                        <i class="fas <%= icon %> fa-2x mb-1"></i><div class="fw-bold fs-5"><%= mesa.numero %></div><small style="font-size: 0.7rem;"><%= texto %></small>
                     </a>
                 <% } %>
             </div>
         <% }); %>
     </div>
 
-    <!-- ============================================= -->
-    <!-- VISTA 2: MAPA VISUAL (OPTIMIZADO PARA PC)     -->
-    <!-- ============================================= -->
+    <!-- VISTA MAPA (PC) -->
     <div id="vista-mapa" class="d-none-custom">
         <% mesas.forEach(mesa => { %>
             <% 
-                // Repetimos lógica de clases para el mapa
-                let colorClass = 'bg-libre';
-                let texto = 'Libre';
-                let linkMap = `/mesero/mesa/${mesa.id}/clientes`;
-                let esFormMap = false;
-
+                let colorClass = 'bg-libre'; let texto = 'Libre'; let linkMap = `/mesero/mesa/${mesa.id}/clientes`; let esFormMap = false;
                 if (mesa.estado === 'ocupado') { colorClass = 'bg-ocupada'; texto = 'Ocupada'; linkMap = '#'; }
                 else if (mesa.estado === 'para_recoger') { colorClass = 'bg-recoger'; texto = '¡RECOGER!'; esFormMap = true; }
                 else if (mesa.estado === 'por_cobrar') { colorClass = 'bg-caja'; texto = 'Caja'; linkMap = '#'; }
             %>
-
-            <div class="mesa-real <%= colorClass %>"
-                 style="left: <%= mesa.pos_x %>px; top: <%= mesa.pos_y %>px; width: <%= mesa.ancho %>px; height: <%= mesa.alto %>px;">
-                
+            <div class="mesa-real <%= colorClass %>" style="left: <%= mesa.pos_x || 0 %>px; top: <%= mesa.pos_y || 0 %>px; width: <%= mesa.ancho || 120 %>px; height: <%= mesa.alto || 120 %>px;">
                 <% if (esFormMap) { %>
-                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="width:100%; height:100%; position:absolute;">
-                        <button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;"></button>
-                    </form>
+                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="width:100%; height:100%; position:absolute;"><button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;"></button></form>
                 <% } else if (linkMap !== '#') { %>
                     <a href="<%= linkMap %>" style="position:absolute; width:100%; height:100%;"></a>
                 <% } %>
-
-                <div style="font-size: 1.2rem; font-weight: bold;"><%= mesa.numero %></div>
-                <div style="font-size: 0.6rem;"><%= texto %></div>
+                <div style="font-size: 1.2rem; font-weight: bold;"><%= mesa.numero %></div><div style="font-size: 0.6rem;"><%= texto %></div>
             </div>
         <% }); %>
     </div>
+</div>
 
+<!-- MODAL MENÚS AGRUPADOS -->
+<div class="modal fade" id="modalMenusHoy" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-utensils me-2"></i> Oferta del Día</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <% if (!menus || menus.length === 0) { %>
+                    <div class="p-5 text-center text-muted"><h5>No hay menús activos hoy.</h5></div>
+                <% } else { %>
+                    <div class="accordion" id="accordionMenus">
+                        <% menus.forEach((menu, index) => { %>
+                            <% 
+                                const grupos = {};
+                                const ordenPrioridad = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida', 'Postre'];
+                                menu.componentes.forEach(comp => {
+                                    const nombreGrupo = comp.grupo ? comp.grupo.nombre : 'Otros';
+                                    if (!grupos[nombreGrupo]) grupos[nombreGrupo] = [];
+                                    grupos[nombreGrupo].push(comp.nombre);
+                                });
+                                const clavesGrupos = Object.keys(grupos).sort((a, b) => {
+                                    const idxA = ordenPrioridad.indexOf(a); const idxB = ordenPrioridad.indexOf(b);
+                                    if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+                                    if (idxA === -1) return 1; if (idxB === -1) return -1;
+                                    return idxA - idxB;
+                                });
+                            %>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button <%= index !== 0 ? 'collapsed' : '' %>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<%= index %>">
+                                        <div class="d-flex w-100 justify-content-between me-3 align-items-center">
+                                            <span class="fw-bold"><%= menu.nombre %></span>
+                                            <span class="badge bg-success rounded-pill">$<%= parseFloat(menu.precio_base).toLocaleString('es-CO') %></span>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="collapse<%= index %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" data-bs-parent="#accordionMenus">
+                                    <div class="accordion-body bg-light">
+                                        <% if (clavesGrupos.length > 0) { %>
+                                            <div class="row">
+                                                <% clavesGrupos.forEach(grupo => { %>
+                                                    <div class="col-md-6 mb-2">
+                                                        <strong class="text-primary d-block border-bottom pb-1 mb-1"><%= grupo %></strong>
+                                                        <ul class="list-unstyled ps-2 mb-0">
+                                                            <% grupos[grupo].forEach(item => { %>
+                                                                <li><i class="fas fa-check text-success me-2 small"></i><%= item %></li>
+                                                            <% }); %>
+                                                        </ul>
+                                                    </div>
+                                                <% }); %>
+                                            </div>
+                                        <% } else { %><p class="text-muted fst-italic mb-0">Sin detalles.</p><% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } %>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">Cerrar</button></div>
+        </div>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -171,7 +165,6 @@
     socket.on('pedido_listo_para_recoger', () => location.reload());
     socket.on('mesa_liberada', () => location.reload()); 
 
-    // --- LÓGICA RESPONSIVE ---
     const vistaLista = document.getElementById('vista-lista');
     const vistaMapa = document.getElementById('vista-mapa');
     const btnLista = document.getElementById('btn-ver-lista');
@@ -179,36 +172,20 @@
 
     function cambiarVista(vista) {
         if (vista === 'lista') {
-            vistaLista.classList.remove('d-none-custom');
-            vistaMapa.classList.add('d-none-custom');
-            btnLista.classList.add('active');
-            btnMapa.classList.remove('active');
+            vistaLista.classList.remove('d-none-custom'); vistaMapa.classList.add('d-none-custom');
+            btnLista.classList.add('active'); btnMapa.classList.remove('active');
             localStorage.setItem('vistaPreferida', 'lista');
         } else {
-            vistaLista.classList.add('d-none-custom');
-            vistaMapa.classList.remove('d-none-custom');
-            btnLista.classList.remove('active');
-            btnMapa.classList.add('active');
+            vistaLista.classList.add('d-none-custom'); vistaMapa.classList.remove('d-none-custom');
+            btnLista.classList.remove('active'); btnMapa.classList.add('active');
             localStorage.setItem('vistaPreferida', 'mapa');
         }
     }
-
-    // --- DETECCIÓN AUTOMÁTICA ---
     document.addEventListener('DOMContentLoaded', () => {
-        const preferencia = localStorage.getItem('vistaPreferida');
-        const esMovil = window.innerWidth < 768; // 768px es el punto de quiebre de tablets
-
-        if (preferencia) {
-            cambiarVista(preferencia);
-        } else {
-            // Si no hay preferencia, decide por el tamaño de pantalla
-            if (esMovil) {
-                cambiarVista('lista');
-            } else {
-                cambiarVista('mapa');
-            }
-        }
+        const pref = localStorage.getItem('vistaPreferida');
+        const esMovil = window.innerWidth < 768;
+        if (pref) cambiarVista(pref);
+        else esMovil ? cambiarVista('lista') : cambiarVista('mapa');
     });
 </script>
-
 <%- include('../partials/footer') %>

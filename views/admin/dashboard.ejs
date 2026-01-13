@@ -3,13 +3,12 @@
 
 <div class="container-fluid mt-4">
     
-    <!-- ENCABEZADO CON BOTONES DE NAVEGACIÓN -->
+    <!-- ENCABEZADO -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
         <div>
             <h1 class="fw-bold text-dark m-0"><i class="fas fa-chart-line text-primary"></i> Tablero Gerencial</h1>
-            <p class="text-muted m-0">Resumen en tiempo real de la operación.</p>
+            <p class="text-muted m-0">Resumen en tiempo real.</p>
         </div>
-        
         <div class="btn-group shadow-sm">
             <a href="/admin/gestion-menu" class="btn btn-outline-primary fw-bold"><i class="fas fa-utensils me-2"></i>Menús</a>
             <a href="/admin/informes" class="btn btn-outline-success fw-bold"><i class="fas fa-file-invoice-dollar me-2"></i>Informes</a>
@@ -41,175 +40,162 @@
         </div>
         <div class="col-md-3">
             <div class="card bg-secondary text-white text-center p-3 shadow-sm h-100 border-0">
-                <!-- Espacio para otro KPI futuro -->
                 <h3 class="fw-bold">--</h3>
                 <small class="text-uppercase opacity-75">Meta del Día</small>
             </div>
         </div>
     </div>
 
-    <!-- FILA 1: LOS 3 GRANDES -->
+    <!-- FILA 1 -->
     <div class="row mb-4">
         <div class="col-md-8">
             <div class="card shadow h-100 border-0">
-                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-primary">1. Ventas por Hora (Picos de Demanda)</div>
-                <div class="card-body"><canvas id="chartHora" height="100"></canvas></div>
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-primary">1. Ventas por Hora</div>
+                <div class="card-body" style="height: 300px;"> <!-- ALTURA FIJA -->
+                    <canvas id="chartHora"></canvas>
+                </div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card shadow h-100 border-0">
-                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-info">2. Estado Actual (En Vivo)</div>
-                <div class="card-body"><canvas id="chartEstados"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- FILA 2: PRODUCTOS -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card shadow h-100 border-0">
-                <div class="card-header bg-white fw-bold py-3 border-bottom-0">3. Top 5 Platos</div>
-                <div class="card-body"><canvas id="chartPlatos"></canvas></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card shadow h-100 border-0">
-                <div class="card-header bg-white fw-bold py-3 border-bottom-0">4. Top 5 Bebidas</div>
-                <div class="card-body"><canvas id="chartBebidas"></canvas></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card shadow h-100 border-0">
-                <div class="card-header bg-white fw-bold py-3 border-bottom-0">5. Hoy vs. Ayer</div>
-                <div class="card-body"><canvas id="chartComparativo"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- FILA 3: MESAS Y RENDIMIENTO -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card shadow h-100 border-0">
-                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-warning">6. Mesas Más Rentables ($)</div>
-                <div class="card-body"><canvas id="chartMesas"></canvas></div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card shadow h-100 border-0">
-                <div class="card-header bg-white fw-bold py-3 border-bottom-0">7. Distribución de Métodos de Pago</div>
-                <div class="card-body d-flex align-items-center justify-content-center text-muted bg-light rounded m-3">
-                    <div class="text-center p-5">
-                        <i class="fas fa-chart-pie fa-3x mb-3 opacity-25"></i>
-                        <p>Información disponible próximamente</p>
-                    </div>
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-info">2. Estado Actual</div>
+                <div class="card-body" style="height: 300px;"> <!-- ALTURA FIJA -->
+                    <canvas id="chartEstados"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- FILA 2 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">3. Top Platos</div>
+                <div class="card-body" style="height: 250px;">
+                    <canvas id="chartPlatos"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">4. Top Bebidas</div>
+                <div class="card-body" style="height: 250px;">
+                    <canvas id="chartBebidas"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0">5. Hoy vs Ayer</div>
+                <div class="card-body" style="height: 250px;">
+                    <canvas id="chartComparativo"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 3: LOS GRÁFICOS QUE SE CRECÍAN -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-warning">6. Mesas Rentables</div>
+                <!-- AQUÍ ESTÁ LA CORRECCIÓN: height: 300px -->
+                <div class="card-body" style="height: 300px; position: relative;">
+                    <canvas id="chartMesas"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-white fw-bold py-3 border-bottom-0 text-danger">7. Deudas Empresas</div>
+                <!-- AQUÍ ESTÁ LA CORRECCIÓN: height: 300px -->
+                <div class="card-body" style="height: 300px; position: relative;">
+                    <% if (empresasLabels && JSON.parse(empresasLabels).length > 0) { %>
+                        <canvas id="chartEmpresas"></canvas>
+                        <p class="text-center text-muted small mt-2 m-0"><i class="fas fa-hand-pointer"></i> Clic para ver detalle</p>
+                    <% } else { %>
+                        <div class="d-flex align-items-center justify-content-center h-100 text-muted">No hay deudas</div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div class="modal fade" id="modalDetalleDeuda" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="tituloModalDeuda">Detalle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead class="table-light"><tr><th>Fecha</th><th>Concepto</th><th class="text-end">Valor</th></tr></thead>
+                    <tbody id="cuerpoTablaDeuda"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <h5 class="me-auto fw-bold text-danger" id="totalModalDeuda"></h5>
+                <a href="/admin/informes/cobranza" class="btn btn-outline-danger">Ir a Cobranza</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // Configuración común para que se vea limpio
     Chart.defaults.font.family = "'Segoe UI', 'Helvetica', 'Arial', sans-serif";
     Chart.defaults.color = '#666';
+    // Opciones comunes para evitar crecimiento infinito
+    const commonOptions = { 
+        responsive: true, 
+        maintainAspectRatio: false, // ESTA ES LA CLAVE
+        plugins: { legend: { display: false } }
+    };
 
-    // --- 1. VENTAS POR HORA ---
-    new Chart(document.getElementById('chartHora'), {
-        type: 'line',
-        data: {
-            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-            datasets: [{
-                label: 'Ventas ($)',
-                data: <%- graficos.ventasHora %>,
-                borderColor: '#4e73df',
-                backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4 // Curvas suaves
-            }]
-        },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] } }, x: { grid: { display: false } } }
-        }
-    });
+    new Chart(document.getElementById('chartHora'), { type: 'line', data: { labels: Array.from({length:24},(_,i)=>`${i}:00`), datasets:[{label:'$', data:<%-graficos.ventasHora%>, borderColor:'#4e73df', backgroundColor:'rgba(78,115,223,0.1)', fill:true, tension:0.4}] }, options: commonOptions });
+    
+    new Chart(document.getElementById('chartEstados'), { type: 'doughnut', data: { labels:<%-graficos.estados.labels%>, datasets:[{data:<%-graficos.estados.data%>, backgroundColor:['#dc3545','#0dcaf0','#ffc107','#198754'], borderWidth:0}] }, options: { ...commonOptions, plugins:{legend:{position:'right'}} } });
 
-    // --- 2. ESTADOS ---
-    new Chart(document.getElementById('chartEstados'), {
-        type: 'doughnut',
-        data: {
-            labels: <%- graficos.estados.labels %>,
-            datasets: [{
-                data: <%- graficos.estados.data %>,
-                backgroundColor: ['#dc3545', '#0dcaf0', '#ffc107', '#198754'],
-                borderWidth: 0
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
-    });
+    new Chart(document.getElementById('chartPlatos'), { type: 'bar', data: { labels:<%-graficos.topPlatos.labels%>, datasets:[{label:'Cant', data:<%-graficos.topPlatos.data%>, backgroundColor:'#36b9cc', borderRadius:4}] }, options: { ...commonOptions, indexAxis:'y' } });
 
-    // --- 3. TOP PLATOS ---
-    new Chart(document.getElementById('chartPlatos'), {
-        type: 'bar',
-        data: {
-            labels: <%- graficos.topPlatos.labels %>,
-            datasets: [{
-                label: 'Cantidad',
-                data: <%- graficos.topPlatos.data %>,
-                backgroundColor: '#36b9cc',
-                borderRadius: 4
-            }]
-        },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    new Chart(document.getElementById('chartBebidas'), { type: 'bar', data: { labels:<%-graficos.topBebidas.labels%>, datasets:[{label:'Cant', data:<%-graficos.topBebidas.data%>, backgroundColor:'#e74a3b', borderRadius:4}] }, options: commonOptions });
 
-    // --- 4. TOP BEBIDAS ---
-    new Chart(document.getElementById('chartBebidas'), {
-        type: 'bar',
-        data: {
-            labels: <%- graficos.topBebidas.labels %>,
-            datasets: [{
-                label: 'Cantidad',
-                data: <%- graficos.topBebidas.data %>,
-                backgroundColor: '#e74a3b',
-                borderRadius: 4
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    new Chart(document.getElementById('chartComparativo'), { type: 'bar', data: { labels:['Ayer','Hoy'], datasets:[{label:'$', data:<%-graficos.comparativo%>, backgroundColor:['#858796','#1cc88a'], borderRadius:4}] }, options: commonOptions });
 
-    // --- 5. COMPARATIVO ---
-    new Chart(document.getElementById('chartComparativo'), {
-        type: 'bar',
-        data: {
-            labels: ['Ayer', 'Hoy'],
-            datasets: [{
-                label: 'Total Ventas',
-                data: <%- graficos.comparativo %>,
-                backgroundColor: ['#858796', '#1cc88a'],
-                borderRadius: 4
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    new Chart(document.getElementById('chartMesas'), { type: 'bar', data: { labels:<%-graficos.topMesas.labels%>, datasets:[{label:'$', data:<%-graficos.topMesas.data%>, backgroundColor:'#f6c23e', borderRadius:4}] }, options: commonOptions });
 
-    // --- 6. MESAS RENTABLES ---
-    new Chart(document.getElementById('chartMesas'), {
-        type: 'bar',
-        data: {
-            labels: <%- graficos.topMesas.labels %>,
-            datasets: [{
-                label: 'Ingresos Generados',
-                data: <%- graficos.topMesas.data %>,
-                backgroundColor: '#f6c23e',
-                borderRadius: 4
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    // GRÁFICO 7 INTERACTIVO
+    const empLabels = <%- empresasLabels || '[]' %>;
+    const empData = <%- empresasData || '[]' %>;
+    const empDetalles = <%- empresasDetalles || '[]' %>;
+
+    if (empLabels.length > 0) {
+        const chartEmp = new Chart(document.getElementById('chartEmpresas'), {
+            type: 'bar',
+            data: { labels: empLabels, datasets: [{ label:'$', data: empData, backgroundColor:'#e74a3b', borderRadius:4 }] },
+            options: {
+                ...commonOptions,
+                onClick: (e) => {
+                    const points = chartEmp.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                    if (points.length) {
+                        const idx = points[0].index;
+                        document.getElementById('tituloModalDeuda').innerText = empLabels[idx];
+                        const tbody = document.getElementById('cuerpoTablaDeuda');
+                        tbody.innerHTML = '';
+                        let total = 0;
+                        empDetalles[idx].forEach(d => {
+                            total += d.valor;
+                            tbody.innerHTML += `<tr><td>${d.fecha}</td><td>${d.plato}</td><td class="text-end">$${d.valor.toLocaleString()}</td></tr>`;
+                        });
+                        document.getElementById('totalModalDeuda').innerText = `Total: $${total.toLocaleString()}`;
+                        new bootstrap.Modal(document.getElementById('modalDetalleDeuda')).show();
+                    }
+                }
+            }
+        });
+    }
 </script>
 
 <%- include('../partials/footer') %>

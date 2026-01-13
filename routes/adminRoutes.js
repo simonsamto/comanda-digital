@@ -2,12 +2,14 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const billingController = require('../controllers/billingController'); // Importar
 
 // 1. DASHBOARD
 router.get('/', adminController.showDashboard);
 
 // 2. GESTIÓN DE MENÚS
 router.get('/gestion-menu', adminController.getGestionMenu);
+router.post('/menus/toggle-estado/:id', adminController.toggleMenuEstado);
 router.get('/menus/nuevo', adminController.showNewMenuForm);
 router.post('/menus/nuevo', adminController.createMenu);
 router.get('/menus/editar/:id', adminController.showEditMenuForm);
@@ -60,5 +62,7 @@ router.get('/informes', adminController.getInformes);
 router.post('/informes/ventas', adminController.generarReporteFechas);
 router.get('/informes/top', adminController.generarReporteTop);
 router.get('/informes/cobranza', adminController.getReporteCuentasCobrar);
+
+router.get('/billing', billingController.getBillingDashboard);
 
 module.exports = router;

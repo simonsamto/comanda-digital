@@ -1,0 +1,60 @@
+<%- include('../partials/header') %>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="fas fa-file-invoice-dollar text-secondary"></i> Facturación del Software</h3>
+        <a href="/admin" class="btn btn-outline-secondary">Volver</a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-dark text-white shadow">
+                <div class="card-body text-center">
+                    <h5 class="text-white-50">Acumulado a Pagar (Pendiente)</h5>
+                    <h1 class="display-4 fw-bold text-warning">$<%= totalPendiente.toLocaleString('es-CO') %></h1>
+                    <small>Se genera corte el día 30</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-primary shadow">
+                <div class="card-body text-center">
+                    <h5 class="text-muted">Generado en <%= mesNombre %></h5>
+                    <h1 class="display-4 fw-bold text-primary">$<%= totalMes.toLocaleString('es-CO') %></h1>
+                    <small>Comisión del 1% sobre ventas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white fw-bold">Detalle de Transacciones (Mes Actual)</div>
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0 small">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Pedido #</th>
+                        <th class="text-end">Venta</th>
+                        <th class="text-end">Comisión (1%)</th>
+                        <th class="text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% comisiones.forEach(c => { %>
+                        <tr>
+                            <td><%= new Date(c.createdAt).toLocaleString() %></td>
+                            <td>#<%= c.pedido_id %></td>
+                            <td class="text-end text-muted">$<%= parseFloat(c.valor_venta).toLocaleString() %></td>
+                            <td class="text-end fw-bold text-dark">$<%= parseFloat(c.valor_comision).toLocaleString() %></td>
+                            <td class="text-center">
+                                <span class="badge bg-<%= c.estado === 'pagado' ? 'success' : 'warning text-dark' %>"><%= c.estado %></span>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<%- include('../partials/footer') %>

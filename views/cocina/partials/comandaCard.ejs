@@ -1,5 +1,4 @@
-<!-- comandaCard.ejs -->
-<div class="col-md-6 col-lg-4 mb-4 comanda-card" id="pedido-<%= pedido.id %>">
+<div class="col-md-6 col-lg-4 mb-4 comanda-card" id="pedido-<%= pedido.id %>" data-fecha="<%= pedido.createdAt %>">
     <div class="card h-100 shadow-sm border-2 
         <%= pedido.estado === 'elaborado' ? 'border-success' : 'border-danger' %>">
 
@@ -15,47 +14,44 @@
             </h6>
             <hr class="mt-1 mb-2">
 
-            <!-- Bucle por Cliente -->
             <% pedido.items.forEach(item => { %>
                 <div class="mb-3 border-bottom pb-2">
-                    <strong class="text-primary">Cliente <%= item.cliente_numero %></strong>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <strong class="text-primary" style="font-size: 1.1em;">Cliente <%= item.cliente_numero %></strong>
+                    </div>
                     
-                    <% if (item.componentes && item.componentes.length > 0) { %>
-                        <!-- 1. Agrupar componentes por Grupo -->
-                        <% 
-                            const gruposOrdenados = {};
-                            // Definir orden de prioridad para mostrar (Opcional, pero útil)
-                            const ordenPrioridad = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida', 'Postre'];
-                            
-                            item.componentes.forEach(comp => {
-                                const nombreGrupo = comp.grupo ? comp.grupo.nombre : 'Otros';
-                                if (!gruposOrdenados[nombreGrupo]) gruposOrdenados[nombreGrupo] = [];
-                                gruposOrdenados[nombreGrupo].push(comp.nombre);
-                            });
+                    <!-- NOMBRE DEL PLATO -->
+                    <div class="fw-bold text-dark fs-5 my-1">
+                        🍽️ <%= item.menu_nombre || 'Plato' %>
+                    </div>
 
-                            // Obtener las claves ordenadas
-                            const clavesGrupos = Object.keys(gruposOrdenados).sort((a, b) => {
-                                const indexA = ordenPrioridad.indexOf(a);
-                                const indexB = ordenPrioridad.indexOf(b);
-                                // Si ambos están en la lista, ordenar por prioridad. Si no, al final.
-                                if (indexA === -1 && indexB === -1) return a.localeCompare(b);
-                                if (indexA === -1) return 1;
-                                if (indexB === -1) return -1;
-                                return indexA - indexB;
+                    <% if (item.componentes && item.componentes.length > 0) { %>
+                        <% 
+                            const grupos = {};
+                            // Orden sugerido: Sopa, Principio, Proteína...
+                            const orden = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida'];
+                            item.componentes.forEach(c => {
+                                const g = c.grupo ? c.grupo.nombre : 'Extras';
+                                if(!grupos[g]) grupos[g] = [];
+                                grupos[g].push(c.nombre);
+                            });
+                            const claves = Object.keys(grupos).sort((a,b) => {
+                                const idxA = orden.indexOf(a); const idxB = orden.indexOf(b);
+                                if(idxA === -1 && idxB === -1) return a.localeCompare(b);
+                                if(idxA === -1) return 1; if(idxB === -1) return -1;
+                                return idxA - idxB;
                             });
                         %>
-
-                        <!-- 2. Mostrar los grupos -->
                         <div class="ms-2 mt-1">
-                            <% clavesGrupos.forEach(grupo => { %>
+                            <% claves.forEach(g => { %>
                                 <div class="d-flex mb-1">
-                                    <span class="badge bg-secondary me-2 align-self-start" style="min-width: 80px;"><%= grupo %></span>
-                                    <span class="fw-bold"><%= gruposOrdenados[grupo].join(', ') %></span>
+                                    <span class="badge bg-secondary me-2 align-self-start" style="min-width: 80px;"><%= g %></span>
+                                    <span class="fw-bold"><%= grupos[g].join(', ') %></span>
                                 </div>
                             <% }); %>
                         </div>
                     <% } else { %>
-                        <div class="text-muted fst-italic ms-2">Sin componentes</div>
+                        <div class="text-muted fst-italic ms-2 small">Sin componentes extra</div>
                     <% } %>
 
                     <% if (item.notas) { %>
