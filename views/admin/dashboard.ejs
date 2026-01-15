@@ -1,141 +1,187 @@
 <%- include('../partials/header') %>
 
-<div class="container-fluid px-4 mt-4">
+<style>
+    /* Estilos personalizados para alto impacto visual */
+    .card-kpi {
+        border: none;
+        border-radius: 15px;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        min-height: 120px;
+    }
+    .card-kpi:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .bg-gradient-primary-soft { background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); }
+    .bg-gradient-success-soft { background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%); }
+    .bg-gradient-warning-soft { background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%); }
+    .bg-gradient-danger-soft  { background: linear-gradient(135deg, #e74a3b 0%, #be2617 100%); }
     
-    <!-- TÍTULO -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold text-dark mb-0">Tablero de Control</h2>
-            <p class="text-muted mb-0">Visión general del negocio en tiempo real</p>
+    .kpi-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 3.5rem;
+        opacity: 0.15;
+        color: #fff;
+    }
+    
+    /* Ajustes para móvil */
+    @media (max-width: 768px) {
+        .card-kpi { min-height: 100px; }
+        .kpi-value { font-size: 1.2rem !important; }
+        .kpi-label { font-size: 0.7rem !important; }
+        .kpi-icon { font-size: 2.5rem; }
+    }
+    
+    .card-dashboard {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.05);
+    }
+    .card-header-clean {
+        background-color: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 1.2rem;
+    }
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container-fluid px-3 px-md-4 mt-4 mb-5">
+    
+    <!-- HEADER -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div class="mb-2 mb-md-0">
+            <h3 class="fw-bold text-dark mb-0"><i class="fas fa-tachometer-alt me-2 text-primary"></i>Centro de Control</h3>
+            <small class="text-muted"><%= new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></small>
         </div>
-        <div class="text-end">
-            <span class="badge bg-light text-dark border px-3 py-2">
-                <i class="far fa-calendar-alt me-2"></i> <%= new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %>
-            </span>
+        <div>
+             <!-- BOTÓN CORREGIDO: Apunta a la interfaz de cobro -->
+             <a href="/cajero" class="btn btn-success shadow-sm btn-sm px-4 py-2 rounded-pill">
+                <i class="fas fa-cash-register me-2"></i> Ir a Caja (Cobrar)
+            </a>
         </div>
     </div>
 
-    <!-- SECCIÓN 1: KPI DE VENTAS (EL PULSO) -->
-    <div class="row g-3 mb-4">
+    <!-- SECCIÓN 1: KPIS PRINCIPALES (Grid 2x2 en móvil para ahorrar espacio) -->
+    <div class="row g-2 g-md-3 mb-4">
+        
         <!-- Venta Hoy -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #0d6efd !important;">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted small fw-bold">Ventas Hoy</h6>
-                    <h2 class="fw-bold mb-0 text-primary">$<%= kpis.dia.total.toLocaleString('es-CO') %></h2>
-                    <small class="<%= kpis.dia.total >= kpis.ayer.total ? 'text-success' : 'text-danger' %> fw-bold">
-                        <i class="fas fa-<%= kpis.dia.total >= kpis.ayer.total ? 'arrow-up' : 'arrow-down' %>"></i> 
-                        vs Ayer ($<%= kpis.ayer.total.toLocaleString('es-CO') %>)
-                    </small>
+        <div class="col-6 col-xl-3">
+            <div class="card-kpi bg-gradient-primary-soft text-white p-3">
+                <div class="kpi-content position-relative z-1">
+                    <div class="kpi-label text-uppercase opacity-75 fw-bold mb-1">Ventas Hoy</div>
+                    <div class="kpi-value h3 fw-bold mb-0">$<%= kpis.dia.total.toLocaleString('es-CO') %></div>
+                    <div class="mt-2 small">
+                        <% if(kpis.dia.total >= kpis.ayer.total) { %>
+                            <span class="badge bg-white text-primary rounded-pill"><i class="fas fa-arrow-up"></i> Mejor que ayer</span>
+                        <% } else { %>
+                            <span class="badge bg-white text-danger rounded-pill opacity-75"><i class="fas fa-arrow-down"></i></span>
+                        <% } %>
+                    </div>
                 </div>
+                <i class="fas fa-cash-register kpi-icon"></i>
             </div>
         </div>
         
         <!-- Venta Mes -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #198754 !important;">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted small fw-bold">Ventas Mes Actual</h6>
-                    <h2 class="fw-bold mb-0 text-success">$<%= kpis.mes.total.toLocaleString('es-CO') %></h2>
-                    <small class="text-muted">Total acumulado</small>
+        <div class="col-6 col-xl-3">
+            <div class="card-kpi bg-gradient-success-soft text-white p-3">
+                <div class="kpi-content position-relative z-1">
+                    <div class="kpi-label text-uppercase opacity-75 fw-bold mb-1">Ventas Mes</div>
+                    <div class="kpi-value h3 fw-bold mb-0">$<%= kpis.mes.total.toLocaleString('es-CO') %></div>
+                    <div class="mt-2 small opacity-75">Acumulado</div>
                 </div>
+                <i class="fas fa-calendar-alt kpi-icon"></i>
             </div>
         </div>
 
-        <!-- Promedio Diario -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #ffc107 !important;">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted small fw-bold">Promedio Diario</h6>
-                    <h2 class="fw-bold mb-0 text-dark">$<%= promedioDiario.toLocaleString('es-CO', {maximumFractionDigits: 0}) %></h2>
-                    <small class="text-muted">Base mes actual</small>
+        <!-- Promedio -->
+        <div class="col-6 col-xl-3">
+            <div class="card-kpi bg-gradient-warning-soft text-white p-3">
+                <div class="kpi-content position-relative z-1">
+                    <div class="kpi-label text-uppercase opacity-75 fw-bold mb-1">Promedio Diario</div>
+                    <div class="kpi-value h3 fw-bold mb-0">$<%= promedioDiario.toLocaleString('es-CO', {maximumFractionDigits: 0}) %></div>
+                    <div class="mt-2 small opacity-75">Meta diaria</div>
                 </div>
+                <i class="fas fa-chart-line kpi-icon"></i>
             </div>
         </div>
 
-        <!-- Fiado / Por Cobrar -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #dc3545 !important;">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted small fw-bold">Total Fiado (Pendiente)</h6>
-                    <h2 class="fw-bold mb-0 text-danger">$<%= totalFiado.toLocaleString('es-CO') %></h2>
-                    <small class="text-muted"><%= clientesFiados %> pedidos pendientes</small>
+        <!-- Fiado -->
+        <div class="col-6 col-xl-3">
+            <div class="card-kpi bg-gradient-danger-soft text-white p-3">
+                <div class="kpi-content position-relative z-1">
+                    <div class="kpi-label text-uppercase opacity-75 fw-bold mb-1">Por Cobrar</div>
+                    <div class="kpi-value h3 fw-bold mb-0">$<%= totalFiado.toLocaleString('es-CO') %></div>
+                    <div class="mt-2 small">
+                        <span class="badge bg-white text-danger rounded-pill"><%= clientesFiados %> Pedidos</span>
+                    </div>
                 </div>
+                <i class="fas fa-hand-holding-usd kpi-icon"></i>
             </div>
         </div>
-    </div>
-
-    <!-- SECCIÓN 2: DEUDAS EMPRESAS (INTERACTIVO) -->
-    <h5 class="text-primary fw-bold mb-3"><i class="fas fa-building me-2"></i>Deudas por Empresa (Cobranza)</h5>
-    <div class="row g-3 mb-5">
-        <% if (deudaEmpresas.length > 0) { %>
-            <% deudaEmpresas.forEach(emp => { %>
-                <div class="col-md-4 col-lg-3">
-                    <a href="/admin/informes/cobranza?empresaId=<%= emp.id %>" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm h-100 hover-scale">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold text-dark mb-1"><%= emp.nombre %></h6>
-                                    <span class="badge bg-secondary"><%= emp.pedidos %> Pedidos</span>
-                                </div>
-                                <div class="text-end">
-                                    <h5 class="fw-bold text-danger mb-0">$<%= emp.deuda.toLocaleString('es-CO') %></h5>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Clic para cobrar <i class="fas fa-arrow-right"></i></small>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            <% }) %>
-        <% } else { %>
-            <div class="col-12">
-                <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i> No hay deudas pendientes de empresas.</div>
-            </div>
-        <% } %>
     </div>
 
     <div class="row g-4">
-        <!-- COLUMNA IZQUIERDA: GRÁFICOS Y ESTADÍSTICAS -->
+        <!-- COLUMNA IZQUIERDA: GRÁFICO Y RANKING -->
         <div class="col-lg-8">
             
-            <!-- GRÁFICO HORAS PICO -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-clock me-2 text-primary"></i>Ventas por Hora (Hoy)</h6>
+            <!-- GRÁFICO VENTAS HORA -->
+            <div class="card card-dashboard mb-4">
+                <div class="card-header-clean d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-primary">Actividad por Hora (Hoy)</h6>
                 </div>
                 <div class="card-body">
-                    <canvas id="chartHoras" height="100"></canvas>
+                    <div class="chart-area" style="height: 250px;">
+                        <canvas id="chartHoras"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <!-- TOP PLATOS (TABLA) -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white py-3 d-flex justify-content-between">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-trophy me-2 text-warning"></i>Top 10 Platos Más Vendidos</h6>
+            <!-- TABLA TOP PLATOS -->
+            <div class="card card-dashboard">
+                <div class="card-header-clean">
+                    <h6 class="m-0 fw-bold text-primary">Top Productos del Mes</h6>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+                            <thead class="bg-light">
                                 <tr>
-                                    <th class="ps-4">#</th>
-                                    <th>Plato</th>
-                                    <th class="text-center">Cant.</th>
-                                    <th class="text-end pe-4">Ingresos Generados</th>
+                                    <th class="ps-4 border-0">Producto</th>
+                                    <th class="text-center border-0">Cant.</th>
+                                    <th class="text-end pe-4 border-0">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <% topPlatosList.forEach((plato, index) => { %>
+                                <% topPlatosList.slice(0, 5).forEach((plato, index) => { %>
                                     <tr>
-                                        <td class="ps-4 fw-bold text-muted"><%= index + 1 %></td>
-                                        <td>
-                                            <span class="fw-bold"><%= plato.nombre %></span>
-                                            <!-- Barra de progreso visual -->
-                                            <div class="progress mt-1" style="height: 4px; width: 100px;">
-                                                <div class="progress-bar bg-primary" role="progressbar" style="width: <%= (plato.cant / topPlatosList[0].cant) * 100 %>%"></div>
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle bg-light text-primary me-3 small">
+                                                    <%= index + 1 %>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold text-dark"><%= plato.nombre %></div>
+                                                    <div class="progress mt-1" style="height: 3px; width: 80px;">
+                                                        <div class="progress-bar bg-info" role="progressbar" style="width: <%= (plato.cant / topPlatosList[0].cant) * 100 %>%"></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
-                                        <td class="text-center"><span class="badge bg-light text-dark border"><%= plato.cant %></span></td>
+                                        <td class="text-center fw-bold text-secondary"><%= plato.cant %></td>
                                         <td class="text-end pe-4 fw-bold text-success">$<%= plato.dinero.toLocaleString('es-CO') %></td>
                                     </tr>
                                 <% }) %>
@@ -144,37 +190,56 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
-        <!-- COLUMNA DERECHA: RESÚMENES -->
+        <!-- COLUMNA DERECHA: DEUDAS Y ACCESOS RÁPIDOS -->
         <div class="col-lg-4">
 
-            <!-- RANKING MESAS -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white py-3">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-chair me-2 text-info"></i>Ventas por Mesa/Punto</h6>
+            <!-- TARJETA DEUDAS EMPRESAS (Mejorada) -->
+            <div class="card card-dashboard mb-4 border-start border-4 border-danger">
+                <div class="card-header-clean bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-danger"><i class="fas fa-exclamation-circle me-2"></i>Cuentas por Cobrar</h6>
+                    <small class="text-muted"><%= deudaEmpresas.length %> Empresas</small>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartMesas" height="200"></canvas>
+                <div class="card-body p-2">
+                    <% if (deudaEmpresas.length > 0) { %>
+                        <div class="list-group list-group-flush">
+                            <% deudaEmpresas.slice(0, 4).forEach(emp => { %>
+                                <a href="/admin/informes/cobranza?empresaId=<%= emp.id %>" class="list-group-item list-group-item-action border-0 rounded-3 mb-1 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-bold text-dark"><%= emp.nombre %></div>
+                                        <small class="text-muted"><%= emp.pedidos %> pedidos pendientes</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-danger">$<%= emp.deuda.toLocaleString('es-CO') %></div>
+                                        <small class="text-primary" style="font-size: 0.7rem;">Cobrar <i class="fas fa-chevron-right"></i></small>
+                                    </div>
+                                </a>
+                            <% }) %>
+                            <% if (deudaEmpresas.length > 4) { %>
+                                <div class="text-center mt-2">
+                                    <a href="/admin/informes/cobranza" class="btn btn-sm btn-outline-danger rounded-pill">Ver todas</a>
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                            <p class="mb-0 small">¡Todo al día! No hay deudas.</p>
+                        </div>
+                    <% } %>
                 </div>
             </div>
 
-            <!-- INGREDIENTES / CONSUMO -->
-            <div class="card border-0 shadow-sm bg-primary text-white">
-                <div class="card-header border-0 py-3 bg-primary">
-                    <h6 class="mb-0 fw-bold text-white"><i class="fas fa-carrot me-2"></i>Top Consumo (Acompañantes)</h6>
+            <!-- CHART MESAS -->
+            <div class="card card-dashboard">
+                <div class="card-header-clean">
+                    <h6 class="m-0 fw-bold text-dark">Ventas por Zona</h6>
                 </div>
-                <div class="card-body pt-0">
-                    <ul class="list-group list-group-flush rounded">
-                        <% topComponentes.forEach(comp => { %>
-                            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent text-white border-bottom border-white-50 px-0">
-                                <span><%= comp.nombre %></span>
-                                <span class="badge bg-white text-primary rounded-pill"><%= comp.cantidad %></span>
-                            </li>
-                        <% }) %>
-                    </ul>
-                    <small class="mt-3 d-block text-white-50">Estimado basado en pedidos del mes.</small>
+                <div class="card-body">
+                    <div style="height: 200px; position: relative;">
+                        <canvas id="chartMesas"></canvas>
+                    </div>
                 </div>
             </div>
 
@@ -182,54 +247,57 @@
     </div>
 </div>
 
-<!-- LIBRERÍA CHART.JS -->
+<!-- Scripts Gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-    .hover-scale { transition: transform 0.2s; cursor: pointer; }
-    .hover-scale:hover { transform: translateY(-5px); }
-</style>
-
 <script>
-    // 1. GRÁFICO DE HORAS
-    const ctxHoras = document.getElementById('chartHoras').getContext('2d');
+    Chart.defaults.font.family = "'Segoe UI', 'Helvetica', 'Arial', sans-serif";
+    
+    // Gráfico Horas
+    const ctxHoras = document.getElementById('chartHoras');
     new Chart(ctxHoras, {
-        type: 'bar',
+        type: 'line', 
         data: {
             labels: <%- graficos.horasLabels %>,
             datasets: [{
-                label: 'Ventas ($)',
+                label: 'Ventas',
                 data: <%- graficos.horasData %>,
-                backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                borderRadius: 4
+                borderColor: '#4e73df',
+                backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.4
             }]
         },
         options: {
-            responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }
+            scales: {
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: {size: 10} } },
+                y: { grid: { borderDash: [2, 2] }, ticks: { display: false } } 
+            }
         }
     });
 
-    // 2. GRÁFICO DE MESAS (Doughnut)
-    const ctxMesas = document.getElementById('chartMesas').getContext('2d');
+    // Gráfico Mesas
+    const ctxMesas = document.getElementById('chartMesas');
     new Chart(ctxMesas, {
         type: 'doughnut',
         data: {
             labels: <%- graficos.topMesasLabels %>,
             datasets: [{
                 data: <%- graficos.topMesasData %>,
-                backgroundColor: [
-                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
-                ],
-                borderWidth: 0
+                backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'],
+                borderWidth: 0,
+                hoverOffset: 4
             }]
         },
         options: {
-            responsive: true,
-            cutout: '70%',
+            maintainAspectRatio: false,
+            cutout: '75%',
             plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true } }
+                legend: { position: 'right', labels: { boxWidth: 10, font: {size: 11} } }
             }
         }
     });
