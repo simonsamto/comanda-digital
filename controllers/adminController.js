@@ -4,84 +4,189 @@ const { Usuario, Rol, Mesa, Menu, Grupo, Componente, Pedido, PedidoItem, sequeli
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
+// HELPER: Función para calcular el total de un pedido de forma consistente
+const calcularTotalPedido = (pedido) => {
+    let total = 0;
+    if (pedido.items) {
+        pedido.items.forEach(item => {
+            total += parseFloat(item.precio_unitario || 0);
+            if (item.componentes) {
+                item.componentes.forEach(comp => {
+                    total += parseFloat(comp.precio_adicional || 0);
+                });
+            }
+        });
+    }
+    return total;
+};
+
 // ==========================================
-// 1. DASHBOARD PRINCIPAL
+// 1. DASHBOARD AVANZADO (CENTRO DE COMANDO)
 // ==========================================
 exports.showDashboard = async (req, res) => {
     try {
-        const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
-        const finDia = new Date(); finDia.setHours(23, 59, 59, 999);
-        const inicioAyer = new Date(inicioDia); inicioAyer.setDate(inicioAyer.getDate() - 1);
-        const finAyer = new Date(finDia); finAyer.setDate(finAyer.getDate() - 1);
+        const hoy = new Date();
+        
+        // --- DEFINICIÓN DE RANGOS DE FECHAS ---
+        const startDay = new Date(hoy); startDay.setHours(0,0,0,0);
+        const endDay = new Date(hoy); endDay.setHours(23,59,59,999);
 
-        const pedidosHoy = await Pedido.findAll({
-            where: { createdAt: { [Op.between]: [inicioDia, finDia] } },
-            include: [{ model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] }]
+        // Semana Actual (Lunes a Domingo)
+        const startWeek = new Date(hoy); 
+        const dayOfWeek = startWeek.getDay() || 7; // Ajuste para que lunes sea 1
+        startWeek.setHours(0,0,0,0);
+        startWeek.setDate(startWeek.getDate() - dayOfWeek + 1);
+
+        // Mes Actual
+        const startMonth = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        
+        // Comparativos (Ayer, Mes Anterior)
+        const startAyer = new Date(startDay); startAyer.setDate(startAyer.getDate() - 1);
+        const endAyer = new Date(endDay); endAyer.setDate(endAyer.getDate() - 1);
+        
+        const startLastMonth = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+        const endLastMonth = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+
+        // --- CONSULTAS ---
+        
+        // A. Ventas Generales (Pagadas)
+        // Traemos datos desde el mes pasado para calcular comparativos en memoria y ahorrar consultas
+        const pedidosMes = await Pedido.findAll({
+            where: {
+                estado: 'pagado',
+                createdAt: { [Op.gte]: startLastMonth } 
+            },
+            include: [
+                { model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] },
+                { model: Mesa, as: 'mesa' }
+            ]
         });
-        const pedidosAyer = await Pedido.findAll({
-            where: { createdAt: { [Op.between]: [inicioAyer, finAyer] }, estado: 'pagado' },
-            include: [{ model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] }]
-        });
+
+        // B. Deuda Empresas (Crédito activo)
         const pedidosCredito = await Pedido.findAll({
             where: { medio_pago: 'credito_empresa', estado: 'pagado' },
-            include: [{ model: Empresa, as: 'empresa' }, { model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] }]
+            include: [
+                { model: Empresa, as: 'empresa' },
+                { model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] }
+            ]
         });
 
-        let totalVentasAyer = 0;
-        pedidosAyer.forEach(p => p.items.forEach(i => { totalVentasAyer += parseFloat(i.precio_unitario||0); i.componentes.forEach(c => totalVentasAyer += parseFloat(c.precio_adicional||0)); }));
+        // --- PROCESAMIENTO DE KPIs ---
 
-        let totalDinero = 0, cantidadPedidos = 0, platosVendidos = 0;
-        const ventasPorPlato = {}, conteoEstados = { 'En Cocina': 0, 'Para Recoger': 0, 'En Mesa': 0, 'Finalizado': 0 }, ventasPorHora = new Array(24).fill(0), conteoBebidas = {}, ventasPorMesa = {};
+        let kpis = {
+            dia: { total: 0, cantidad: 0 },
+            ayer: { total: 0 },
+            semana: { total: 0, cantidad: 0 },
+            mes: { total: 0, cantidad: 0 },
+            mesAnterior: { total: 0 }
+        };
 
-        pedidosHoy.forEach(p => {
-            if (p.estado === 'recibido' || p.estado === 'en_preparacion') conteoEstados['En Cocina']++;
-            else if (p.estado === 'elaborado') conteoEstados['Para Recoger']++;
-            else if (p.estado === 'entregado') conteoEstados['En Mesa']++;
-            else if (p.estado === 'pagado') {
-                conteoEstados['Finalizado']++;
-                cantidadPedidos++;
-                let valor = 0;
-                p.items.forEach(i => {
-                    const pr = parseFloat(i.precio_unitario||0); valor += pr; totalDinero += pr; platosVendidos++;
-                    const etiq = `Menú ($${pr.toFixed(0)})`; ventasPorPlato[etiq] = (ventasPorPlato[etiq]||0)+1;
-                    i.componentes.forEach(c => { const pc = parseFloat(c.precio_adicional||0); valor += pc; totalDinero += pc; conteoBebidas[c.nombre] = (conteoBebidas[c.nombre]||0)+1; });
-                });
-                ventasPorHora[new Date(p.createdAt).getHours()] += valor;
-                ventasPorMesa[`Mesa ${p.mesa_id}`] = (ventasPorMesa[`Mesa ${p.mesa_id}`]||0)+valor;
+        const ventasPorHora = new Array(24).fill(0);
+        const rankingPlatos = {};     
+        const rankingMesas = {};      
+        const consumoComponentes = {}; 
+
+        pedidosMes.forEach(p => {
+            const fecha = new Date(p.createdAt);
+            const totalP = calcularTotalPedido(p);
+            
+            // Filtros de Tiempo
+            if (fecha >= startDay && fecha <= endDay) {
+                kpis.dia.total += totalP;
+                kpis.dia.cantidad++;
+                ventasPorHora[fecha.getHours()] += totalP; // Gráfica horas (solo hoy)
             }
+            if (fecha >= startAyer && fecha <= endAyer) kpis.ayer.total += totalP;
+            if (fecha >= startWeek) { kpis.semana.total += totalP; kpis.semana.cantidad++; }
+            if (fecha >= startMonth) { 
+                kpis.mes.total += totalP; 
+                kpis.mes.cantidad++; 
+
+                // Ranking Platos y Componentes (Solo analizamos el mes actual)
+                p.items.forEach(i => {
+                    const nombreP = i.menu_nombre || 'Varios';
+                    if (!rankingPlatos[nombreP]) rankingPlatos[nombreP] = { cant: 0, dinero: 0 };
+                    rankingPlatos[nombreP].cant++;
+                    rankingPlatos[nombreP].dinero += parseFloat(i.precio_unitario || 0);
+
+                    // Componentes
+                    if (i.componentes) {
+                        i.componentes.forEach(c => {
+                            consumoComponentes[c.nombre] = (consumoComponentes[c.nombre] || 0) + 1;
+                        });
+                    }
+                });
+
+                // Ranking Mesas
+                const mesaNombre = p.mesa ? `Mesa ${p.mesa.numero}` : 'Barra/Ext';
+                rankingMesas[mesaNombre] = (rankingMesas[mesaNombre] || 0) + totalP;
+            }
+            if (fecha >= startLastMonth && fecha < startMonth) kpis.mesAnterior.total += totalP;
         });
 
-        const deudaPorEmpresa = {};
+        // --- PROCESAR DEUDAS EMPRESAS ---
+        const deudaEmpresas = {};
+        let totalFiado = 0;
+        let clientesFiados = 0;
+
         pedidosCredito.forEach(p => {
             if (!p.empresa) return;
-            const nom = p.empresa.nombre;
-            if (!deudaPorEmpresa[nom]) deudaPorEmpresa[nom] = { total: 0, detalles: [] };
-            p.items.forEach(i => {
-                let val = parseFloat(i.precio_unitario||0);
-                i.componentes.forEach(c => val += parseFloat(c.precio_adicional||0));
-                deudaPorEmpresa[nom].total += val;
-                deudaPorEmpresa[nom].detalles.push({ fecha: new Date(p.createdAt).toLocaleDateString(), plato: `Pedido #${p.id}`, valor: val });
-            });
+            const idEmp = p.empresa.id;
+            const nomEmp = p.empresa.nombre;
+            const totalP = calcularTotalPedido(p);
+
+            if (!deudaEmpresas[idEmp]) deudaEmpresas[idEmp] = { id: idEmp, nombre: nomEmp, deuda: 0, pedidos: 0 };
+            
+            deudaEmpresas[idEmp].deuda += totalP;
+            deudaEmpresas[idEmp].pedidos++;
+            totalFiado += totalP;
+            clientesFiados++; 
         });
 
-        const getTop5 = (o) => Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,5);
-        const topP = getTop5(ventasPorPlato), topB = getTop5(conteoBebidas), topM = getTop5(ventasPorMesa);
-        const empL = Object.keys(deudaPorEmpresa), empD = empL.map(k=>deudaPorEmpresa[k].total), empDet = empL.map(k=>deudaPorEmpresa[k].detalles);
+        // --- ORDENAR RANKINGS ---
+        const topPlatos = Object.entries(rankingPlatos)
+            .map(([k, v]) => ({ nombre: k, ...v }))
+            .sort((a, b) => b.cant - a.cant)
+            .slice(0, 10);
 
+        const topComponentes = Object.entries(consumoComponentes)
+            .map(([k, v]) => ({ nombre: k, cantidad: v }))
+            .sort((a, b) => b.cantidad - a.cantidad)
+            .slice(0, 8);
+        
+        const topMesas = Object.entries(rankingMesas)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        // --- RENDERIZAR ---
         res.render('admin/dashboard', {
-            pageTitle: 'Panel', totalDinero, cantidadPedidos, platosVendidos,
-            kpis: { ventasHoy: totalDinero, pedidosHoy: cantidadPedidos, ticketPromedio: cantidadPedidos ? totalDinero/cantidadPedidos : 0 },
+            pageTitle: 'Tablero de Control',
+            kpis,
+            promedioDiario: kpis.mes.cantidad > 0 ? kpis.mes.total / new Date().getDate() : 0,
+            
+            // Datos para gráficas
             graficos: {
-                ventasHora: JSON.stringify(ventasPorHora),
-                estados: { labels: JSON.stringify(Object.keys(conteoEstados)), data: JSON.stringify(Object.values(conteoEstados)) },
-                topPlatos: { labels: JSON.stringify(topP.map(x=>x[0])), data: JSON.stringify(topP.map(x=>x[1])) },
-                topBebidas: { labels: JSON.stringify(topB.map(x=>x[0])), data: JSON.stringify(topB.map(x=>x[1])) },
-                topMesas: { labels: JSON.stringify(topM.map(x=>x[0])), data: JSON.stringify(topM.map(x=>x[1])) },
-                comparativo: JSON.stringify([totalVentasAyer, totalDinero])
+                horasLabels: JSON.stringify([...Array(24).keys()].map(h => `${h}:00`)),
+                horasData: JSON.stringify(ventasPorHora),
+                topPlatosNombres: JSON.stringify(topPlatos.map(p => p.nombre)),
+                topPlatosData: JSON.stringify(topPlatos.map(p => p.cant)),
+                topMesasLabels: JSON.stringify(topMesas.map(m => m[0])),
+                topMesasData: JSON.stringify(topMesas.map(m => m[1]))
             },
-            empresasLabels: JSON.stringify(empL), empresasData: JSON.stringify(empD), empresasDetalles: JSON.stringify(empDet)
+            
+            topComponentes,
+            topPlatosList: topPlatos,
+            
+            // Sección Deudas
+            deudaEmpresas: Object.values(deudaEmpresas),
+            totalFiado,
+            clientesFiados
         });
-    } catch (e) { res.status(500).send("Error dashboard"); }
+
+    } catch (e) {
+        console.error("Error Dashboard:", e);
+        res.status(500).send("Error cargando el dashboard");
+    }
 };
 
 // ==========================================
@@ -245,7 +350,6 @@ exports.getInformes = (req, res) => { res.render('admin/informes', { pageTitle: 
 // REPORTE DE VENTAS (KARDEX) - CORREGIDO
 exports.generarReporteFechas = async (req, res) => {
     try {
-        // 1. FECHAS (YYYY-MM-DD)
         const hoyStr = new Date().toLocaleDateString('en-CA');
         const fechaInicio = req.body.fechaInicio || hoyStr;
         const fechaFin = req.body.fechaFin || hoyStr;
@@ -255,7 +359,6 @@ exports.generarReporteFechas = async (req, res) => {
         const endDate = new Date(fechaFin);
         endDate.setHours(23, 59, 59, 999);
 
-        // 2. CONSULTA (Filtro 'pagado')
         const pedidos = await Pedido.findAll({
             where: {
                 estado: 'pagado', 
@@ -270,14 +373,8 @@ exports.generarReporteFechas = async (req, res) => {
 
         let totalGeneral = 0;
 
-        // 3. TRANSFORMACIÓN DE DATOS (Soluciona error toLocaleString)
         const datosFormateados = pedidos.map(p => {
-            let sumaPedido = 0;
-            if (p.items) {
-                p.items.forEach(item => {
-                    sumaPedido += parseFloat(item.precio_unitario || 0);
-                });
-            }
+            const sumaPedido = calcularTotalPedido(p); // Usamos el helper
             totalGeneral += sumaPedido;
 
             return {
@@ -288,7 +385,6 @@ exports.generarReporteFechas = async (req, res) => {
             };
         });
 
-        // 4. RENDER
         res.render('admin/reporte-resultados', {
             pageTitle: 'Reporte de Ventas (Kardex)',
             fechaInicio: fechaInicio,
@@ -307,13 +403,9 @@ exports.generarReporteFechas = async (req, res) => {
     }
 };
 
-
+// REPORTE DE RANKING PRODUCTOS - CORREGIDO
 exports.generarReporteTop = async (req, res) => {
     try {
-        const { Op } = require('sequelize');
-        const { Pedido, PedidoItem } = require('../models');
-
-        // 1. CONFIGURACIÓN DE FECHAS (Idéntica al Kardex para que coincidan)
         const hoyStr = new Date().toLocaleDateString('en-CA');
         const fechaInicio = req.body.fechaInicio || hoyStr;
         const fechaFin = req.body.fechaFin || hoyStr;
@@ -323,51 +415,37 @@ exports.generarReporteTop = async (req, res) => {
         const endDate = new Date(fechaFin);
         endDate.setHours(23, 59, 59, 999);
 
-        // 2. CONSULTA (Buscamos PEDIDOS, igual que en el reporte de ventas)
+        // CONSULTA SOBRE PEDIDOS PAGADOS (Para consistencia con el Kardex)
         const pedidos = await Pedido.findAll({
             where: {
-                estado: 'pagado', // Filtramos solo lo pagado
+                estado: 'pagado', 
                 createdAt: { [Op.between]: [startDate, endDate] }
             },
             include: [
-                { 
-                    model: PedidoItem, 
-                    as: 'items' // Traemos los items de cada pedido
-                }
+                { model: PedidoItem, as: 'items' }
             ]
         });
 
-        // 3. AGRUPACIÓN MANUAL (Más segura y exacta)
+        // AGRUPACIÓN MANUAL
         const conteo = {};
 
         pedidos.forEach(pedido => {
             if (pedido.items && pedido.items.length > 0) {
                 pedido.items.forEach(item => {
-                    // Usamos el nombre del menú, o "Personalizado" si no tiene
                     const nombre = item.menu_nombre || 'Producto Personalizado';
                     const precio = parseFloat(item.precio_unitario || 0);
 
                     if (!conteo[nombre]) {
-                        conteo[nombre] = { 
-                            nombre: nombre, 
-                            cantidad: 0, 
-                            total: 0 
-                        };
+                        conteo[nombre] = { nombre: nombre, cantidad: 0, total: 0 };
                     }
-
                     conteo[nombre].cantidad += 1;
                     conteo[nombre].total += precio;
                 });
             }
         });
 
-        // 4. ORDENAR (De mayor cantidad vendida a menor)
         const ranking = Object.values(conteo).sort((a, b) => b.cantidad - a.cantidad);
 
-        // Debug en consola para verificar si encuentra datos
-        console.log(`Reporte Ranking: Encontrados ${pedidos.length} pedidos y ${ranking.length} productos únicos.`);
-
-        // 5. RENDERIZAR
         res.render('admin/reporte-resultados', {
             pageTitle: 'Ranking de Productos Más Vendidos',
             datos: ranking,
@@ -378,13 +456,11 @@ exports.generarReporteTop = async (req, res) => {
 
     } catch (error) {
         console.error('Error en reporte top:', error);
-        req.flash('error_msg', 'Error al generar el ranking.');
         res.redirect('/admin/informes');
     }
 };
 
-
-exports.getReporteCuentasCobrar = async (req, res) => { try { const {empresaId,fechaInicio,fechaFin}=req.query; let where={medio_pago:'credito_empresa',estado:'pagado'}; if(empresaId) where.empresa_id=empresaId; if(fechaInicio) where.createdAt={[Op.between]:[new Date(fechaInicio),new Date(fechaFin||fechaInicio)]}; const p=await Pedido.findAll({where, include:[{model:Empresa,as:'empresa'},{model:PedidoItem,as:'items',include:[{model:Componente,as:'componentes'}]}], order:[['createdAt','DESC']]}); let td=0; const pr=p.map(x=>{let t=0;x.items.forEach(i=>{t+=parseFloat(i.precio_unitario||0);i.componentes.forEach(c=>t+=parseFloat(c.precio_adicional||0))});td+=t;return{...x.toJSON(),totalCalculado:t};}); res.render('admin/reporte-cobranza',{empresas:await Empresa.findAll(),pedidos:pr,totalDeuda:td,filtros:req.query}); } catch(e){ res.redirect('/admin/informes'); } };
+exports.getReporteCuentasCobrar = async (req, res) => { try { const {empresaId,fechaInicio,fechaFin}=req.query; let where={medio_pago:'credito_empresa',estado:'pagado'}; if(empresaId) where.empresa_id=empresaId; if(fechaInicio) where.createdAt={[Op.between]:[new Date(fechaInicio),new Date(fechaFin||fechaInicio)]}; const p=await Pedido.findAll({where, include:[{model:Empresa,as:'empresa'},{model:PedidoItem,as:'items',include:[{model:Componente,as:'componentes'}]}], order:[['createdAt','DESC']]}); let td=0; const pr=p.map(x=>{const t=calcularTotalPedido(x); td+=t; return{...x.toJSON(),totalCalculado:t};}); res.render('admin/reporte-cobranza',{empresas:await Empresa.findAll(),pedidos:pr,totalDeuda:td,filtros:req.query}); } catch(e){ res.redirect('/admin/informes'); } };
 exports.saldarDeudaEmpresa = async (req, res) => { try { const {pedidosIds,accion}=req.body; const {empresaId}=req.query; let where={medio_pago:'credito_empresa',estado:'pagado'}; if(accion==='todo'){if(empresaId)where.empresa_id=empresaId;}else{if(!pedidosIds)return res.redirect('/admin/informes/cobranza'); where.id=pedidosIds;} await Pedido.update({estado:'finalizado'},{where}); res.redirect('/admin/informes/cobranza?empresaId='+(empresaId||'')); } catch(e){ res.redirect('/admin/informes/cobranza'); } };
 
 // ==========================================
