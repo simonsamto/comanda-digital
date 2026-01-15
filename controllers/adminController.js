@@ -1,9 +1,12 @@
 'use strict';
+// IMPORTACIÓN ÚNICA Y CENTRALIZADA
 const { Usuario, Rol, Mesa, Menu, Grupo, Componente, Pedido, PedidoItem, sequelize, Empresa, MenuComponente } = require('../models');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
-// 1. DASHBOARD
+// ==========================================
+// 1. DASHBOARD PRINCIPAL
+// ==========================================
 exports.showDashboard = async (req, res) => {
     try {
         const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
@@ -81,18 +84,47 @@ exports.showDashboard = async (req, res) => {
     } catch (e) { res.status(500).send("Error dashboard"); }
 };
 
-// 2. GESTIÓN DE MENÚS
+// ==========================================
+// 2. GESTIÓN DE MENÚS (CRUD)
+// ==========================================
 exports.getGestionMenu = async (req, res) => { try { const m = await Menu.findAll({order:[['id','ASC']]}); res.render('admin/gestion-menu',{menus:m}); } catch(e){ res.redirect('/admin'); } };
-exports.showNewMenuForm = (req, res) => res.render('admin/menu-form', { menu:{} });
-exports.createMenu = async (req, res) => { try { await Menu.create({...req.body, activo:!!req.body.activo}); res.redirect('/admin/gestion-menu'); } catch(e){ res.render('admin/menu-form', {menu:req.body, error:e.message}); } };
-exports.showEditMenuForm = async (req, res) => { try { const m = await Menu.findByPk(req.params.id); res.render('admin/menu-form',{menu:m}); } catch(e){ res.redirect('/admin/gestion-menu'); } };
+
+// MOSTRAR FORMULARIO CREAR (GET)
+exports.showNewMenuForm = (req, res) => {
+    try {
+        res.render('admin/menu-form', {
+            pageTitle: 'Crear Nuevo Menú',
+            menu: {}, 
+            action: '/admin/menus/create'
+        });
+    } catch (error) {
+        console.error(error);
+        res.redirect('/admin/menus');
+    }
+};
+
+// GUARDAR NUEVO MENÚ (POST)
+exports.createMenu = async (req, res) => {
+    try {
+        const { nombre, precio_base, activo } = req.body;
+        await Menu.create({
+            nombre,
+            precio_base,
+            activo: activo === 'on' ? true : false
+        });
+        res.redirect('/admin/menus');
+    } catch (error) {
+        console.error('Error al crear menú:', error);
+        res.redirect('/admin/menus/create');
+    }
+};
+
+exports.showEditMenuForm = async (req, res) => { try { const m = await Menu.findByPk(req.params.id); res.render('admin/menu-form',{menu:m, pageTitle: 'Editar Menú', action: `/admin/menus/edit/${m.id}`}); } catch(e){ res.redirect('/admin/gestion-menu'); } };
 exports.updateMenu = async (req, res) => { try { await Menu.update({...req.body, activo:!!req.body.activo}, {where:{id:req.params.id}}); res.redirect('/admin/gestion-menu'); } catch(e){ res.redirect('/admin/gestion-menu'); } };
 exports.deleteMenu = async (req, res) => { try { await Menu.destroy({where:{id:req.params.id}}); res.redirect('/admin/gestion-menu'); } catch(e){ res.redirect('/admin/gestion-menu'); } };
 exports.toggleMenuEstado = async (req, res) => { try { const m=await Menu.findByPk(req.params.id); m.activo=!m.activo; await m.save(); res.json({success:true, nuevoEstado:m.activo}); } catch(e){ res.status(500).json({success:false}); } };
 
-
-// ...
-
+// CONFIGURACIÓN DE COMPONENTES DEL MENÚ
 exports.showConfigurarMenu = async (req, res) => {
     try {
         const menu = await Menu.findByPk(req.params.id);
@@ -101,23 +133,13 @@ exports.showConfigurarMenu = async (req, res) => {
             order: [['id', 'ASC'], [{ model: Componente, as: 'componentes' }, 'nombre', 'ASC']]
         });
         
-        // Obtenemos los componentes del menú
         const compSel = await menu.getComponentes();
         
         const configMap = {};
         compSel.forEach(c => {
-            // INTENTO 1: Nombre estándar de Sequelize
-            let pivote = c.menu_componentes;
+            // Lógica para encontrar la tabla pivote sin importar cómo la llamó Sequelize
+            let pivote = c.menu_componentes || c.MenuComponente || c.dataValues.menu_componentes;
             
-            // INTENTO 2: Nombre alternativo si usaste 'as' o nombre de modelo
-            if (!pivote) pivote = c.MenuComponente;
-            
-            // INTENTO 3: Si definiste la tabla con otro nombre en 'through'
-            if (!pivote) pivote = c.dataValues.menu_componentes;
-
-            // Debug para que veas en consola dónde está el dato
-            // console.log(`Comp ${c.nombre}:`, pivote);
-
             configMap[c.id] = {
                 selected: true,
                 por_defecto: pivote ? pivote.por_defecto : false
@@ -135,22 +157,15 @@ exports.showConfigurarMenu = async (req, res) => {
         res.redirect('/admin/gestion-menu'); 
     }
 };
-// ...
 
-
-// --- FUNCIÓN CORREGIDA PARA GUARDAR "POR DEFECTO" SIN ARCHIVOS EXTRA ---
 exports.saveConfigurarMenu = async (req, res) => {
     try {
         const menuId = parseInt(req.params.id);
         const data = req.body.comps || {};
-        
-        // Usamos el modelo de la tabla intermedia que Sequelize crea automáticamente
-        const MenuComponentes = sequelize.model('MenuComponente');
-
-        if (!MenuComponente) throw new Error("Modelo 'menu_componentes' no encontrado");
+        const MenuComponenteModel = sequelize.model('MenuComponente'); 
 
         // 1. Borrar todo lo anterior
-        await MenuComponente.destroy({ where: { menu_id: menuId } });
+        await MenuComponenteModel.destroy({ where: { menu_id: menuId } });
 
         // 2. Preparar nuevos datos
         const nuevasRelaciones = [];
@@ -167,21 +182,21 @@ exports.saveConfigurarMenu = async (req, res) => {
             }
         }
 
-        // 3. Insertar masivamente (Bulk Insert es más seguro y rápido)
+        // 3. Insertar
         if (nuevasRelaciones.length > 0) {
-            await MenuComponente.bulkCreate(nuevasRelaciones);
+            await MenuComponenteModel.bulkCreate(nuevasRelaciones);
         }
 
-        req.flash('success_msg', 'Configuración guardada.');
         res.redirect('/admin/gestion-menu');
     } catch (e) { 
         console.error("ERROR GUARDAR CONFIG:", e);
-        req.flash('error_msg', 'Error al guardar.');
         res.redirect('/admin/gestion-menu'); 
     }
 };
 
-// 3. GESTIÓN COMPONENTES
+// ==========================================
+// 3. GESTIÓN DE COMPONENTES Y GRUPOS
+// ==========================================
 exports.getGestionComponentes = async (req, res) => { try { const g=await Grupo.findAll({include:{model:Componente,as:'componentes'}, order:[['nombre','ASC']]}); res.render('admin/gestion-componentes',{grupos:g}); } catch(e){ res.redirect('/admin'); } };
 exports.createComponente = async (req, res) => { try { const {nombre, grupo_id, precio_adicional} = req.body; await Componente.create({nombre, grupo_id, precio_adicional: parseFloat(precio_adicional)||0}); res.redirect('/admin/gestion-componentes'); } catch (e) { res.redirect('/admin/gestion-componentes'); } };
 exports.createGrupo = async (req, res) => { try { await Grupo.create(req.body); res.redirect('/admin/gestion-componentes'); } catch (e) { res.redirect('/admin/gestion-componentes'); } };
@@ -192,7 +207,9 @@ exports.showEditGrupoForm = async (req, res) => { const g=await Grupo.findByPk(r
 exports.updateGrupo = async (req, res) => { await Grupo.update(req.body, {where:{id:req.params.id}}); res.redirect('/admin/gestion-componentes'); };
 exports.deleteGrupo = async (req, res) => { await Grupo.destroy({where:{id:req.params.id}}); res.redirect('/admin/gestion-componentes'); };
 
-// 4. USUARIOS
+// ==========================================
+// 4. GESTIÓN DE USUARIOS
+// ==========================================
 exports.getUsuarios = async (req, res) => { const u=await Usuario.findAll({include:{model:Rol,as:'rol'}}); res.render('admin/usuarios',{usuarios:u}); };
 exports.showNewUserForm = async (req, res) => { const r=await Rol.findAll(); res.render('admin/usuario-form',{usuario:{}, roles:r}); };
 exports.createUser = async (req, res) => { try{ await Usuario.create(req.body); res.redirect('/admin/usuarios'); }catch(e){ const r=await Rol.findAll(); res.render('admin/usuario-form',{usuario:req.body, roles:r, error:e.message}); } };
@@ -200,7 +217,9 @@ exports.showEditUserForm = async (req, res) => { const u=await Usuario.findByPk(
 exports.updateUser = async (req, res) => { const u=await Usuario.findByPk(req.params.id); u.nombre=req.body.nombre; u.email=req.body.email; u.RolId=req.body.RolId; if(req.body.password) u.password=req.body.password; await u.save(); res.redirect('/admin/usuarios'); };
 exports.toggleUserStatus = async (req, res) => { const u=await Usuario.findByPk(req.params.id); u.activo=!u.activo; await u.save(); res.redirect('/admin/usuarios'); };
 
-// 5. MESAS
+// ==========================================
+// 5. GESTIÓN DE MESAS
+// ==========================================
 exports.getMesas = async (req, res) => { const m=await Mesa.findAll({order:[['numero','ASC']]}); res.render('admin/mesas',{mesas:m}); };
 exports.showNewMesaForm = (req, res) => res.render('admin/mesa-form',{mesa:{}});
 exports.createMesa = async (req, res) => { try{await Mesa.create(req.body);res.redirect('/admin/mesas');}catch(e){res.render('admin/mesa-form',{mesa:req.body,error:e.message});} };
@@ -211,19 +230,166 @@ exports.liberarTodasLasMesas = async (req, res) => { await Mesa.update({estado:'
 exports.getMapaEditor = async (req, res) => { const m=await Mesa.findAll(); res.render('admin/mapa-editor',{mesas:m}); };
 exports.saveMapaLayout = async (req, res) => { try{const d=req.body; if(!Array.isArray(d)) return res.status(400).json({success:false}); for(const p of d){ await Mesa.update({pos_x:parseInt(p.x)||0, pos_y:parseInt(p.y)||0, ancho:parseInt(p.w)||120, alto:parseInt(p.h)||120},{where:{id:parseInt(p.id)}}); } res.json({success:true}); }catch(e){res.status(500).json({success:false});} };
 
-// 6. EMPRESAS
+// ==========================================
+// 6. GESTIÓN DE EMPRESAS
+// ==========================================
 exports.getGestionEmpresas = async (req, res) => { try{const e=await Empresa.findAll();res.render('admin/gestion-empresas',{empresas:e});}catch(e){res.redirect('/admin');} };
 exports.createEmpresa = async (req, res) => { try{await Empresa.create(req.body);res.redirect('/admin/empresas');}catch(e){res.redirect('/admin/empresas');} };
 exports.deleteEmpresa = async (req, res) => { try{await Empresa.destroy({where:{id:req.params.id}});res.redirect('/admin/empresas');}catch(e){res.redirect('/admin/empresas');} };
 
-// 7. INFORMES
+// ==========================================
+// 7. INFORMES (REPORTES)
+// ==========================================
 exports.getInformes = (req, res) => { res.render('admin/informes', { pageTitle: 'Informes' }); };
-exports.generarReporteFechas = async (req, res) => { try { const {fechaInicio,fechaFin}=req.body; const s=new Date(fechaInicio); s.setHours(0,0,0,0); const e=new Date(fechaFin); e.setHours(23,59,59,999); const v=await Pedido.findAll({where:{estado:'pagado',createdAt:{[Op.between]:[s,e]}},include:[{model:PedidoItem,as:'items',include:[{model:Componente,as:'componentes'}]}]}); let ti=0; const d=v.map(p=>{let t=0;p.items.forEach(i=>{t+=parseFloat(i.precio_unitario||0);i.componentes.forEach(c=>t+=parseFloat(c.precio_adicional||0))});ti+=t;return{id:p.id,fecha:p.createdAt,mesa:p.mesa_id,total:t};}); res.render('admin/reporte-resultados',{tipo:'ventas',datos:d,resumen:{totalIngresos:ti,totalPedidos:v.length}}); } catch(e){ res.redirect('/admin/informes'); } };
-exports.generarReporteTop = async (req, res) => { try { const p=await Pedido.findAll({where:{estado:'pagado'},include:[{model:PedidoItem,as:'items',include:[{model:Componente,as:'componentes'}]}]}); const r={}; p.forEach(x=>x.items.forEach(i=>{const n=`Menú ($${i.precio_unitario})`;r[n]=(r[n]||0)+1;i.componentes.forEach(c=>r[c.nombre]=(r[c.nombre]||0)+1)})); const a=Object.keys(r).map(k=>({nombre:k,cantidad:r[k],tipo:'Item'})).sort((a,b)=>b.cantidad-a.cantidad); res.render('admin/reporte-resultados',{tipo:'ranking',datos:a}); } catch(e){ res.redirect('/admin/informes'); } };
+
+// REPORTE DE VENTAS (KARDEX) - CORREGIDO
+exports.generarReporteFechas = async (req, res) => {
+    try {
+        // 1. FECHAS (YYYY-MM-DD)
+        const hoyStr = new Date().toLocaleDateString('en-CA');
+        const fechaInicio = req.body.fechaInicio || hoyStr;
+        const fechaFin = req.body.fechaFin || hoyStr;
+
+        const startDate = new Date(fechaInicio);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(fechaFin);
+        endDate.setHours(23, 59, 59, 999);
+
+        // 2. CONSULTA (Filtro 'pagado')
+        const pedidos = await Pedido.findAll({
+            where: {
+                estado: 'pagado', 
+                createdAt: { [Op.between]: [startDate, endDate] }
+            },
+            include: [
+                { model: Mesa, as: 'mesa' },
+                { model: PedidoItem, as: 'items' }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+
+        let totalGeneral = 0;
+
+        // 3. TRANSFORMACIÓN DE DATOS (Soluciona error toLocaleString)
+        const datosFormateados = pedidos.map(p => {
+            let sumaPedido = 0;
+            if (p.items) {
+                p.items.forEach(item => {
+                    sumaPedido += parseFloat(item.precio_unitario || 0);
+                });
+            }
+            totalGeneral += sumaPedido;
+
+            return {
+                id: p.id,
+                fecha: p.createdAt, 
+                mesa: p.mesa ? `Mesa ${p.mesa.numero}` : 'Barra/Domicilio', 
+                total: sumaPedido 
+            };
+        });
+
+        // 4. RENDER
+        res.render('admin/reporte-resultados', {
+            pageTitle: 'Reporte de Ventas (Kardex)',
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            datos: datosFormateados, 
+            tipo: 'ventas',
+            resumen: {
+                totalIngresos: totalGeneral,
+                totalPedidos: pedidos.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Error en reporte fechas:', error);
+        res.redirect('/admin/informes');
+    }
+};
+
+
+exports.generarReporteTop = async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const { Pedido, PedidoItem } = require('../models');
+
+        // 1. CONFIGURACIÓN DE FECHAS (Idéntica al Kardex para que coincidan)
+        const hoyStr = new Date().toLocaleDateString('en-CA');
+        const fechaInicio = req.body.fechaInicio || hoyStr;
+        const fechaFin = req.body.fechaFin || hoyStr;
+
+        const startDate = new Date(fechaInicio);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(fechaFin);
+        endDate.setHours(23, 59, 59, 999);
+
+        // 2. CONSULTA (Buscamos PEDIDOS, igual que en el reporte de ventas)
+        const pedidos = await Pedido.findAll({
+            where: {
+                estado: 'pagado', // Filtramos solo lo pagado
+                createdAt: { [Op.between]: [startDate, endDate] }
+            },
+            include: [
+                { 
+                    model: PedidoItem, 
+                    as: 'items' // Traemos los items de cada pedido
+                }
+            ]
+        });
+
+        // 3. AGRUPACIÓN MANUAL (Más segura y exacta)
+        const conteo = {};
+
+        pedidos.forEach(pedido => {
+            if (pedido.items && pedido.items.length > 0) {
+                pedido.items.forEach(item => {
+                    // Usamos el nombre del menú, o "Personalizado" si no tiene
+                    const nombre = item.menu_nombre || 'Producto Personalizado';
+                    const precio = parseFloat(item.precio_unitario || 0);
+
+                    if (!conteo[nombre]) {
+                        conteo[nombre] = { 
+                            nombre: nombre, 
+                            cantidad: 0, 
+                            total: 0 
+                        };
+                    }
+
+                    conteo[nombre].cantidad += 1;
+                    conteo[nombre].total += precio;
+                });
+            }
+        });
+
+        // 4. ORDENAR (De mayor cantidad vendida a menor)
+        const ranking = Object.values(conteo).sort((a, b) => b.cantidad - a.cantidad);
+
+        // Debug en consola para verificar si encuentra datos
+        console.log(`Reporte Ranking: Encontrados ${pedidos.length} pedidos y ${ranking.length} productos únicos.`);
+
+        // 5. RENDERIZAR
+        res.render('admin/reporte-resultados', {
+            pageTitle: 'Ranking de Productos Más Vendidos',
+            datos: ranking,
+            fechaInicio: fechaInicio, 
+            fechaFin: fechaFin,
+            tipo: 'ranking'
+        });
+
+    } catch (error) {
+        console.error('Error en reporte top:', error);
+        req.flash('error_msg', 'Error al generar el ranking.');
+        res.redirect('/admin/informes');
+    }
+};
+
+
 exports.getReporteCuentasCobrar = async (req, res) => { try { const {empresaId,fechaInicio,fechaFin}=req.query; let where={medio_pago:'credito_empresa',estado:'pagado'}; if(empresaId) where.empresa_id=empresaId; if(fechaInicio) where.createdAt={[Op.between]:[new Date(fechaInicio),new Date(fechaFin||fechaInicio)]}; const p=await Pedido.findAll({where, include:[{model:Empresa,as:'empresa'},{model:PedidoItem,as:'items',include:[{model:Componente,as:'componentes'}]}], order:[['createdAt','DESC']]}); let td=0; const pr=p.map(x=>{let t=0;x.items.forEach(i=>{t+=parseFloat(i.precio_unitario||0);i.componentes.forEach(c=>t+=parseFloat(c.precio_adicional||0))});td+=t;return{...x.toJSON(),totalCalculado:t};}); res.render('admin/reporte-cobranza',{empresas:await Empresa.findAll(),pedidos:pr,totalDeuda:td,filtros:req.query}); } catch(e){ res.redirect('/admin/informes'); } };
 exports.saldarDeudaEmpresa = async (req, res) => { try { const {pedidosIds,accion}=req.body; const {empresaId}=req.query; let where={medio_pago:'credito_empresa',estado:'pagado'}; if(accion==='todo'){if(empresaId)where.empresa_id=empresaId;}else{if(!pedidosIds)return res.redirect('/admin/informes/cobranza'); where.id=pedidosIds;} await Pedido.update({estado:'finalizado'},{where}); res.redirect('/admin/informes/cobranza?empresaId='+(empresaId||'')); } catch(e){ res.redirect('/admin/informes/cobranza'); } };
 
-// 8. BILLING
+// ==========================================
+// 8. BILLING (FACTURACIÓN)
+// ==========================================
 const billingController = require('../controllers/billingController');
 if(billingController && billingController.getBillingDashboard) exports.getBillingDashboard = billingController.getBillingDashboard;
 else exports.getBillingDashboard = (req,res) => res.redirect('/admin');
