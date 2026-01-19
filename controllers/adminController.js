@@ -331,7 +331,52 @@ exports.createMesa = async (req, res) => { try{await Mesa.create(req.body);res.r
 exports.showEditMesaForm = async (req, res) => { const m=await Mesa.findByPk(req.params.id); res.render('admin/mesa-form',{mesa:m}); };
 exports.updateMesa = async (req, res) => { await Mesa.update(req.body, {where:{id:req.params.id}}); res.redirect('/admin/mesas'); };
 exports.deleteMesa = async (req, res) => { await Mesa.destroy({where:{id:req.params.id}}); res.redirect('/admin/mesas'); };
-exports.liberarTodasLasMesas = async (req, res) => { await Mesa.update({estado:'libre'},{where:{}}); res.redirect('/admin/mesas'); };
+
+
+// ==========================================
+// FUNCIÓN: LIBERAR TODO (REFUERZO PARA BUG DE MESAS PEGADAS)
+// ==========================================
+exports.liberarTodasLasMesas = async (req, res) => {
+    try {
+        // Importar Op si no está arriba
+        const { Op } = require('sequelize');
+        const { Pedido, Mesa } = require('../models');
+
+        // 1. CANCELAR TODO LO PENDIENTE
+        // Cambiamos a 'cancelado' para asegurarnos que el filtro del mesero (que busca != finalizado)
+        // los ignore completamente.
+        const resultado = await Pedido.update(
+            { estado: 'cancelado' }, 
+            { 
+                where: { 
+                    // Cualquier cosa que NO sea un pago exitoso o ya cancelado
+                    estado: { [Op.notIn]: ['pagado', 'finalizado', 'cancelado'] } 
+                } 
+            }
+        );
+
+        console.log(`[Admin] Se cancelaron ${resultado} pedidos forzosamente.`);
+
+        // 2. LIBERAR MESAS
+        await Mesa.update({ estado: 'libre' }, { where: {} });
+
+        // 3. AVISAR
+        const io = req.app.get('socketio');
+        if (io) {
+            io.emit('mesa_liberada');
+            io.emit('recargar_pagina'); // Evento para forzar F5 en todos
+        }
+
+        req.flash('success_msg', 'Reinicio completo: Mesas liberadas y pedidos limpiados.');
+        res.redirect('/admin/mesas');
+    } catch (error) {
+        console.error("Error fatal al liberar:", error);
+        req.flash('error_msg', 'Error al liberar mesas.');
+        res.redirect('/admin/mesas');
+    }
+};
+
+
 exports.getMapaEditor = async (req, res) => { const m=await Mesa.findAll(); res.render('admin/mapa-editor',{mesas:m}); };
 exports.saveMapaLayout = async (req, res) => { try{const d=req.body; if(!Array.isArray(d)) return res.status(400).json({success:false}); for(const p of d){ await Mesa.update({pos_x:parseInt(p.x)||0, pos_y:parseInt(p.y)||0, ancho:parseInt(p.w)||120, alto:parseInt(p.h)||120},{where:{id:parseInt(p.id)}}); } res.json({success:true}); }catch(e){res.status(500).json({success:false});} };
 

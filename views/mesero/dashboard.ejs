@@ -18,12 +18,13 @@
     }
     .mesa-card-mobile:active { transform: scale(0.95); }
 
-    .bg-libre { background-color: #198754; border: 2px solid #146c43; }
-    .bg-ocupada { background-color: #dc3545; border: 2px solid #b02a37; }
-    .bg-recoger { background-color: #0dcaf0; border: 2px solid #0aa2c0; color: #000; animation: pulse-blue 2s infinite; }
-    .bg-caja { background-color: #ffc107; border: 2px solid #cc9a06; color: #000; }
+    /* Colores por estado */
+    .bg-libre { background-color: #198754; border: 2px solid #146c43; } /* Verde */
+    .bg-ocupada { background-color: #dc3545; border: 2px solid #b02a37; } /* Rojo (Cocina) */
+    .bg-recoger { background-color: #ffc107; border: 2px solid #e0a800; color: #000; animation: pulse-yellow 1.5s infinite; } /* Amarillo (Listo) */
+    .bg-caja { background-color: #6f42c1; border: 2px solid #59359a; color: #fff; cursor: not-allowed; } /* Morado (Caja) */
 
-    @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); } 100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); } }
+    @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); } }
     .d-none-custom { display: none !important; }
 </style>
 
@@ -33,11 +34,9 @@
         <h2 class="m-0"><i class="fas fa-map-marked-alt"></i> Mesas</h2>
         
         <div class="btn-group" role="group">
-            <!-- BOTÓN PARA VER MENÚS DEL DÍA -->
             <button type="button" class="btn btn-warning me-2 fw-bold" data-bs-toggle="modal" data-bs-target="#modalMenusHoy">
                 <i class="fas fa-utensils"></i> Oferta Hoy
             </button>
-
             <button type="button" class="btn btn-outline-primary active" id="btn-ver-lista" onclick="cambiarVista('lista')">
                 <i class="fas fa-th-large"></i>
             </button>
@@ -47,25 +46,71 @@
         </div>
     </div>
 
+    <!-- LÓGICA DE ESTADOS Y BLOQUEO -->
+    <% 
+        function obtenerEstadoMesa(mesa) {
+            let estadoPedido = null;
+            if (mesa.pedidos && mesa.pedidos.length > 0) {
+                estadoPedido = mesa.pedidos[0].estado;
+            }
+
+            let data = {
+                color: 'bg-libre',
+                icon: 'fa-chair',
+                texto: 'Libre',
+                link: `/mesero/mesa/${mesa.id}/clientes`,
+                esForm: false,
+                bloqueado: false
+            };
+
+            // 1. Si el pedido ya está en cocina
+            if (estadoPedido === 'recibido' || estadoPedido === 'en_preparacion') {
+                data.color = 'bg-ocupada';
+                data.icon = 'fa-fire';
+                data.texto = 'Cocina...';
+                data.link = '#'; // Se puede cambiar si quieres permitir agregar items mientras cocinan
+                data.bloqueado = true;
+            
+            // 2. Si el pedido está listo para recoger
+            } else if (estadoPedido === 'elaborado') {
+                data.color = 'bg-recoger';
+                data.icon = 'fa-bell';
+                data.texto = '¡RECOGER!';
+                data.esForm = true; // Activa botón submit
+            
+            // 3. Si ya se recogió -> MESA BLOQUEADA (EN CAJA)
+            } else if (estadoPedido === 'entregado' || mesa.estado === 'por_cobrar') {
+                data.color = 'bg-caja';
+                data.icon = 'fa-file-invoice-dollar';
+                data.texto = 'En Caja';
+                data.link = '#'; // Enlace muerto
+                data.bloqueado = true; // Bloqueo visual
+            }
+            return data;
+        }
+    %>
+
     <!-- VISTA LISTA (MÓVIL) -->
     <div id="vista-lista" class="row g-3">
         <% mesas.forEach(mesa => { %>
-            <% 
-                let colorClass = 'bg-libre'; let icon = 'fa-chair'; let texto = 'Libre'; let link = `/mesero/mesa/${mesa.id}/clientes`; let esForm = false;
-                if (mesa.estado === 'ocupado') { colorClass = 'bg-ocupada'; icon = 'fa-utensils'; texto = 'Ocupada'; link = '#'; }
-                else if (mesa.estado === 'para_recoger') { colorClass = 'bg-recoger'; icon = 'fa-bell'; texto = '¡RECOGER!'; esForm = true; }
-                else if (mesa.estado === 'por_cobrar') { colorClass = 'bg-caja'; icon = 'fa-cash-register'; texto = 'Caja'; link = '#'; }
-            %>
+            <% const info = obtenerEstadoMesa(mesa); %>
             <div class="col-4 col-sm-3 col-md-2">
-                <% if (esForm) { %>
+                <% if (info.esForm) { %>
+                    <!-- BOTÓN RECOGER -->
                     <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="height:100%">
-                        <button type="submit" class="card w-100 mesa-card-mobile <%= colorClass %> border-0 p-0" onclick="return confirm('¿Entregar?');">
-                            <i class="fas <%= icon %> fa-2x mb-1"></i><div class="fw-bold fs-5"><%= mesa.numero %></div><small style="font-size: 0.7rem;"><%= texto %></small>
+                        <button type="submit" class="card w-100 mesa-card-mobile <%= info.color %> border-0 p-0" onclick="return confirm('¿Confirmar entrega a la mesa?');">
+                            <i class="fas <%= info.icon %> fa-2x mb-1"></i>
+                            <div class="fw-bold fs-5"><%= mesa.numero %></div>
+                            <small style="font-size: 0.7rem;"><%= info.texto %></small>
                         </button>
                     </form>
                 <% } else { %>
-                    <a href="<%= link %>" class="mesa-card-mobile <%= colorClass %>" <%= link === '#' ? 'style="opacity:0.6; cursor:not-allowed;"' : '' %>>
-                        <i class="fas <%= icon %> fa-2x mb-1"></i><div class="fw-bold fs-5"><%= mesa.numero %></div><small style="font-size: 0.7rem;"><%= texto %></small>
+                    <!-- MESA NORMAL O BLOQUEADA -->
+                    <a href="<%= info.link %>" class="mesa-card-mobile <%= info.color %>" 
+                       <%= info.bloqueado ? 'style="opacity:0.8; cursor:not-allowed;" onclick="return false;"' : '' %>>
+                        <i class="fas <%= info.icon %> fa-2x mb-1"></i>
+                        <div class="fw-bold fs-5"><%= mesa.numero %></div>
+                        <small style="font-size: 0.7rem;"><%= info.texto %></small>
                     </a>
                 <% } %>
             </div>
@@ -75,25 +120,23 @@
     <!-- VISTA MAPA (PC) -->
     <div id="vista-mapa" class="d-none-custom">
         <% mesas.forEach(mesa => { %>
-            <% 
-                let colorClass = 'bg-libre'; let texto = 'Libre'; let linkMap = `/mesero/mesa/${mesa.id}/clientes`; let esFormMap = false;
-                if (mesa.estado === 'ocupado') { colorClass = 'bg-ocupada'; texto = 'Ocupada'; linkMap = '#'; }
-                else if (mesa.estado === 'para_recoger') { colorClass = 'bg-recoger'; texto = '¡RECOGER!'; esFormMap = true; }
-                else if (mesa.estado === 'por_cobrar') { colorClass = 'bg-caja'; texto = 'Caja'; linkMap = '#'; }
-            %>
-            <div class="mesa-real <%= colorClass %>" style="left: <%= mesa.pos_x || 0 %>px; top: <%= mesa.pos_y || 0 %>px; width: <%= mesa.ancho || 120 %>px; height: <%= mesa.alto || 120 %>px;">
-                <% if (esFormMap) { %>
-                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="width:100%; height:100%; position:absolute;"><button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;"></button></form>
-                <% } else if (linkMap !== '#') { %>
-                    <a href="<%= linkMap %>" style="position:absolute; width:100%; height:100%;"></a>
+            <% const info = obtenerEstadoMesa(mesa); %>
+            <div class="mesa-real <%= info.color %>" style="left: <%= mesa.pos_x || 0 %>px; top: <%= mesa.pos_y || 0 %>px; width: <%= mesa.ancho || 120 %>px; height: <%= mesa.alto || 120 %>px;">
+                <% if (info.esForm) { %>
+                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="width:100%; height:100%; position:absolute;">
+                        <button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;" title="Clic para entregar"></button>
+                    </form>
+                <% } else if (info.link !== '#') { %>
+                    <a href="<%= info.link %>" style="position:absolute; width:100%; height:100%;"></a>
                 <% } %>
-                <div style="font-size: 1.2rem; font-weight: bold;"><%= mesa.numero %></div><div style="font-size: 0.6rem;"><%= texto %></div>
+                <div style="font-size: 1.2rem; font-weight: bold;"><%= mesa.numero %></div>
+                <div style="font-size: 0.6rem;"><%= info.texto %></div>
             </div>
         <% }); %>
     </div>
 </div>
 
-<!-- MODAL MENÚS AGRUPADOS -->
+<!-- MODAL MENÚS -->
 <div class="modal fade" id="modalMenusHoy" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -109,18 +152,12 @@
                         <% menus.forEach((menu, index) => { %>
                             <% 
                                 const grupos = {};
-                                const ordenPrioridad = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida', 'Postre'];
                                 menu.componentes.forEach(comp => {
                                     const nombreGrupo = comp.grupo ? comp.grupo.nombre : 'Otros';
                                     if (!grupos[nombreGrupo]) grupos[nombreGrupo] = [];
                                     grupos[nombreGrupo].push(comp.nombre);
                                 });
-                                const clavesGrupos = Object.keys(grupos).sort((a, b) => {
-                                    const idxA = ordenPrioridad.indexOf(a); const idxB = ordenPrioridad.indexOf(b);
-                                    if (idxA === -1 && idxB === -1) return a.localeCompare(b);
-                                    if (idxA === -1) return 1; if (idxB === -1) return -1;
-                                    return idxA - idxB;
-                                });
+                                const clavesGrupos = Object.keys(grupos).sort();
                             %>
                             <div class="accordion-item">
                                 <h2 class="accordion-header">
@@ -146,7 +183,7 @@
                                                     </div>
                                                 <% }); %>
                                             </div>
-                                        <% } else { %><p class="text-muted fst-italic mb-0">Sin detalles.</p><% } %>
+                                        <% } else { %><p class="text-muted">Sin detalles.</p><% } %>
                                     </div>
                                 </div>
                             </div>
@@ -163,7 +200,10 @@
 <script>
     const socket = io();
     socket.on('pedido_listo_para_recoger', () => location.reload());
-    socket.on('mesa_liberada', () => location.reload()); 
+    socket.on('pedido_actualizado', () => location.reload());
+    socket.on('nuevo_pedido', () => location.reload());
+    // Recargar cuando el cajero libere la mesa
+    socket.on('mesa_liberada', () => location.reload());
 
     const vistaLista = document.getElementById('vista-lista');
     const vistaMapa = document.getElementById('vista-mapa');
