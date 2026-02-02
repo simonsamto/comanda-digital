@@ -1,61 +1,73 @@
 <%- include('../partials/header') %>
 
 <style>
-    /* ANIMACIONES Y ESTILOS BASE */
-    .nuevo-pedido-animacion { animation: flashGreen 2s infinite; border: 2px solid #28a745 !important; }
-    @keyframes flashGreen { 0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); } }
+    /* 1. ANIMACIÓN NUEVO PEDIDO (Borde Verde) */
+    .nuevo-pedido-animacion { 
+        animation: flashGreen 2s infinite; 
+        border: 3px solid #28a745 !important; 
+    }
+    @keyframes flashGreen { 
+        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); } 
+        70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); } 
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); } 
+    }
     
-    .alerta-demora { animation: panico 0.5s infinite alternate !important; border: 3px solid red !important; }
-    @keyframes panico { 0% { transform: scale(1); } 100% { transform: scale(1.02); } }
-    
+    /* 2. ESTILO VERDE FLUORESCENTE PARA MODIFICADOS (Tu requerimiento) */
+    .bg-fluorescente {
+        background-color: #39ff14 !important; /* Verde Neón */
+        color: black !important;
+        border: 3px solid #000 !important;
+        box-shadow: 0 0 15px #39ff14;
+        animation: latido 1s infinite alternate;
+    }
+    .bg-fluorescente .card-header, 
+    .bg-fluorescente .card-footer {
+        background-color: transparent !important;
+        border-color: black !important;
+        color: black !important;
+    }
+    .bg-fluorescente .badge {
+        background-color: black !important;
+        color: #39ff14 !important;
+    }
+    @keyframes latido {
+        from { transform: scale(1); }
+        to { transform: scale(1.02); }
+    }
+
+    /* 3. ALERTA DEMORA */
+    .alerta-demora { border: 4px solid red !important; }
+
     .reloj-cocina { font-family: monospace; font-weight: bold; font-size: 1.2rem; }
     
-    /* === ESTILOS COMPACTOS PARA MÓVIL === */
+    /* Estilos móviles */
     @media (max-width: 768px) {
-        .container-fluid { padding: 5px; }
-        .titulo-cocina { font-size: 1.2rem; }
-        .badge-contador { font-size: 0.8rem; }
-        
-        /* Forzar 2 columnas en móviles grandes o 1 en muy pequeños */
-        .col-movil-compacto {
-            padding-left: 4px;
-            padding-right: 4px;
-        }
-        
-        /* Reducir tamaño de fuentes en tarjetas */
-        .comanda-card .card-header { padding: 5px 8px; }
-        .comanda-card h4 { font-size: 1rem; margin: 0; }
-        .comanda-card .pedido-id { font-size: 0.8rem; }
-        .comanda-card .card-body { padding: 8px; }
-        
-        /* Botones más fáciles de tocar */
-        .btn-terminar { padding: 10px 0; font-size: 1.1rem; }
+        .col-movil-compacto { padding-left: 4px; padding-right: 4px; }
+        .comanda-card h4 { font-size: 1rem; }
+        .btn-terminar { padding: 12px; font-size: 1.2rem; }
     }
 </style>
 
 <div class="container-fluid mt-3">
-    <!-- BARRA SUPERIOR COMPACTA -->
+    <!-- BARRA SUPERIOR -->
     <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm">
         <div class="d-flex align-items-center gap-2">
-            <h1 class="m-0 titulo-cocina"><i class="fas fa-fire-alt text-danger"></i> Cocina</h1>
-            <span class="badge bg-dark badge-contador" id="contador-pedidos">0</span>
+            <h1 class="m-0"><i class="fas fa-fire-alt text-danger"></i> Cocina</h1>
+            <span class="badge bg-dark fs-5" id="contador-pedidos">0</span>
         </div>
-        
-        <div class="d-flex align-items-center gap-1">
-            <div class="reloj-cocina text-primary d-none d-md-block me-2" id="reloj">00:00</div>
-            <button class="btn btn-primary btn-sm" onclick="cargarResumenProduccion()"><i class="fas fa-clipboard-list"></i></button>
+        <div class="d-flex align-items-center gap-2">
+            <div class="reloj-cocina text-primary d-none d-md-block" id="reloj">00:00</div>
             <button class="btn btn-outline-danger btn-sm" id="btn-activar-sonido"><i class="fas fa-volume-mute"></i></button>
             <a href="/cocina" class="btn btn-outline-secondary btn-sm"><i class="fas fa-sync-alt"></i></a>
         </div>
     </div>
 
-    <!-- PEDIDOS -->
-    <div class="row g-2" id="pedidos-container"> <!-- g-2 reduce el espacio entre tarjetas -->
+    <!-- CONTENEDOR DE PEDIDOS -->
+    <div class="row g-2" id="pedidos-container">
         <% if (pedidos.length === 0) { %>
             <div id="no-pedidos-placeholder" class="col-12">
                 <div class="alert alert-secondary text-center py-5">
-                    <h1><i class="fas fa-check-circle"></i></h1>
-                    <p>Sin pedidos pendientes</p>
+                    <h1><i class="fas fa-check-circle"></i></h1><p>Todo listo por ahora</p>
                 </div>
             </div>
         <% } else { %>
@@ -66,25 +78,23 @@
     </div>
 </div>
 
-<!-- TEMPLATE JS (ACTUALIZADO IGUAL QUE LA TARJETA) -->
+<!-- TEMPLATE PARA GENERAR PEDIDOS CON JS -->
 <template id="comanda-template">
     <div class="col-12 col-md-6 col-lg-4 mb-3 comanda-card col-movil-compacto">
         <div class="card h-100 shadow-sm border-danger">
             <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                <h4 class="mb-0 fw-bold">Mesa <span class="mesa-numero"></span></h4>
+                <h4 class="mb-0 fw-bold">Mesa <span class="mesa-numero"></span> <span class="etiqueta-modificado"></span></h4>
                 <span class="badge bg-white text-danger fw-bold">#<span class="pedido-id"></span></span>
             </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between text-muted small mb-1">
-                    <span><i class="far fa-clock"></i> <span class="pedido-hora"></span></span>
-                </div>
+            <div class="card-body p-2">
+                <div class="text-muted small mb-1"><i class="far fa-clock"></i> <span class="pedido-hora"></span></div>
                 <hr class="my-1">
                 <div class="items-list"></div>
             </div>
             <div class="card-footer bg-white p-1">
                 <form class="estado-form" method="POST">
                     <input type="hidden" name="nuevoEstado" value="elaborado">
-                    <button type="submit" class="btn btn-warning w-100 fw-bold btn-terminar shadow-sm">
+                    <button type="submit" class="btn btn-warning w-100 fw-bold btn-terminar shadow-sm py-2">
                         <i class="fas fa-check"></i> LISTO
                     </button>
                 </form>
@@ -93,70 +103,79 @@
     </div>
 </template>
 
-<!-- MODAL PRODUCCIÓN (Sin Cambios) -->
-<div class="modal fade" id="modalProduccion" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white py-2"><h6 class="modal-title">Producción Hoy</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body p-2">
-                <div class="text-center mb-2"><h3>Total: <strong class="text-success" id="total-despachados">0</strong></h3></div>
-                <ul class="list-group list-group-sm" id="lista-produccion"></ul>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    // ... (El script de Socket.IO es IDÉNTICO al anterior, solo cambia la generación del HTML del item) ...
-    // ... Copia la lógica de conexión, reloj y sonido del código anterior ...
-
     document.addEventListener('DOMContentLoaded', function () {
         const socket = io();
         const audio = new Audio('/sounds/notification.mp3');
         let sonidoActivado = false;
 
+        // Reloj
         setInterval(() => { 
             const d = new Date(); 
-            const timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const el = document.getElementById('reloj');
-            if(el) el.innerText = timeStr;
+            if(el) el.innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         }, 1000);
 
-        document.getElementById('btn-activar-sonido').addEventListener('click', function() { audio.play().then(() => { sonidoActivado = true; this.className = 'btn btn-success btn-sm'; this.innerHTML = '<i class="fas fa-volume-up"></i>'; this.disabled=true; }).catch(e=>alert(e)); });
+        // Activar Sonido
+        document.getElementById('btn-activar-sonido').addEventListener('click', function() { 
+            audio.play().then(() => { 
+                sonidoActivado = true; 
+                this.className = 'btn btn-success btn-sm'; 
+                this.innerHTML = '<i class="fas fa-volume-up"></i>'; 
+                this.disabled = true; 
+            }).catch(e => alert("Toca la pantalla primero para activar audio")); 
+        });
 
+        // Modo Pánico (Demora)
         setInterval(() => {
             const ahora = new Date();
             document.querySelectorAll('.comanda-card').forEach(card => {
-                if ((ahora - new Date(card.dataset.fecha)) > 60000 && !card.querySelector('.border-success')) card.querySelector('.card').classList.add('alerta-demora');
+                // Solo si no es modificado (para no quitar el verde)
+                if (!card.querySelector('.card').classList.contains('bg-fluorescente')) {
+                    if ((ahora - new Date(card.dataset.fecha)) > 60000 && !card.querySelector('.border-success')) {
+                        card.querySelector('.card').classList.add('alerta-demora');
+                    }
+                }
             });
         }, 5000);
 
-        function actualizarContador() {
-            document.getElementById('contador-pedidos').textContent = document.querySelectorAll('.comanda-card').length;
-        }
+        // --- FUNCIÓN CENTRAL PARA DIBUJAR TARJETA ---
+        function renderizarTarjeta(pedido, esModificado = false) {
+            const ph = document.getElementById('no-pedidos-placeholder'); 
+            if (ph) ph.style.display = 'none';
 
-        socket.on('nuevo_pedido', function (pedido) {
-            if (sonidoActivado) { audio.currentTime = 0; audio.play(); }
-            const ph = document.getElementById('no-pedidos-placeholder'); if (ph) ph.style.display = 'none';
+            // Si es modificado, borramos la vieja primero
+            if (esModificado) {
+                const old = document.getElementById(`pedido-${pedido.id}`);
+                if (old) old.remove();
+            }
 
             const template = document.getElementById('comanda-template');
             const clone = template.content.cloneNode(true);
             const cardRoot = clone.querySelector('.comanda-card');
+            const cardInner = clone.querySelector('.card');
             
             cardRoot.id = `pedido-${pedido.id}`;
             cardRoot.dataset.fecha = new Date().toISOString();
-            cardRoot.classList.add('nuevo-pedido-animacion');
+
+            // ESTILOS VISUALES
+            if (esModificado) {
+                cardInner.classList.remove('border-danger');
+                cardInner.classList.add('bg-fluorescente'); // CLASE VERDE FOSFORESCENTE
+                clone.querySelector('.etiqueta-modificado').innerHTML = '<span class="badge bg-black text-warning blink">MODIFICADO</span>';
+            } else {
+                cardRoot.classList.add('nuevo-pedido-animacion');
+            }
             
             clone.querySelector('.mesa-numero').textContent = pedido.mesa.numero;
             clone.querySelector('.pedido-id').textContent = pedido.id;
-            clone.querySelector('.pedido-hora').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            clone.querySelector('.pedido-hora').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             clone.querySelector('.estado-form').action = `/cocina/pedido/${pedido.id}/estado`;
 
+            // RENDERIZAR ITEMS (COMPACTO)
             const lista = clone.querySelector('.items-list');
-            
             pedido.items.forEach(item => {
-                // --- LÓGICA DE VISUALIZACIÓN COMPACTA JS ---
                 const grupos = {};
                 if(item.componentes) item.componentes.forEach(c => {
                     const g = c.grupo ? c.grupo.nombre : 'Otros';
@@ -164,59 +183,63 @@
                     grupos[g].push(c.nombre);
                 });
 
-                // Priorizamos Proteína y Principio
-                let destacadosHtml = '';
-                let secundariosHtml = '';
-
+                let destacados = '', secundarios = '';
                 Object.keys(grupos).forEach(gName => {
-                    const contenido = grupos[gName].join(', ');
-                    const gNameLower = gName.toLowerCase();
-                    
-                    // Si es Proteína o Principio -> GRANDE Y NEGRITA
-                    if (gNameLower.includes('prote') || gNameLower.includes('principio')) {
-                        destacadosHtml += `<div class="mb-1"><span class="badge bg-warning text-dark me-1">${gName}</span><span class="fs-5 fw-bold text-dark">${contenido}</span></div>`;
+                    const cont = grupos[gName].join(', ');
+                    if(gName.toLowerCase().includes('prote') || gName.toLowerCase().includes('principio')) {
+                        destacados += `<div class="mb-1"><span class="badge bg-warning text-dark me-1">${gName}</span><span class="fw-bold text-dark fs-5">${cont}</span></div>`;
                     } else {
-                        // Lo demás (Bebida, Sopa) -> PEQUEÑO Y GRIS
-                        secundariosHtml += `<span class="badge bg-light text-secondary border me-1">${gName}: ${contenido}</span>`;
+                        secundarios += `<span class="badge bg-light text-secondary border me-1">${gName}: ${cont}</span>`;
                     }
                 });
 
                 const div = document.createElement('div');
                 div.className = 'mb-2 border-bottom pb-1';
                 div.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center bg-light px-1 rounded">
+                    <div class="d-flex justify-content-between bg-light px-1 rounded">
                         <strong class="text-primary small">C-${item.cliente_numero}</strong>
                         <span class="fw-bold small text-dark">${item.menu_nombre || 'Plato'}</span>
                     </div>
-                    <div class="mt-1 ps-1">
-                        ${destacadosHtml}
-                        <div class="mt-1 lh-1">${secundariosHtml}</div>
-                    </div>
-                    ${item.notas ? `<div class="alert alert-warning py-0 px-1 mt-1 mb-0" style="font-size:0.8rem"><strong>OJO:</strong> ${item.notas}</div>` : ''}
+                    <div class="ps-1 mt-1">${destacados}<div class="mt-1 lh-1">${secundarios}</div></div>
+                    ${item.notas ? `<div class="alert alert-warning py-0 px-1 mt-1 small"><strong>OJO:</strong> ${item.notas}</div>` : ''}
                 `;
                 lista.appendChild(div);
             });
 
             document.getElementById('pedidos-container').prepend(clone);
             actualizarContador();
+        }
+
+        function actualizarContador() {
+            document.getElementById('contador-pedidos').textContent = document.querySelectorAll('.comanda-card').length;
+        }
+
+        // --- LISTENERS DE SOCKET ---
+        socket.on('nuevo_pedido', (p) => {
+            if (sonidoActivado) audio.play();
+            renderizarTarjeta(p, false);
+        });
+
+        socket.on('pedido_modificado', (p) => {
+            if (sonidoActivado) { audio.play(); setTimeout(()=>audio.play(), 500); } // Doble sonido
+            renderizarTarjeta(p, true);
         });
 
         socket.on('actualizacion_estado', (data) => {
             const card = document.getElementById(`pedido-${data.pedidoId}`);
             if (!card) return;
             if (data.nuevoEstado === 'elaborado') {
-                card.querySelector('.card').className = 'card h-100 shadow-sm border-success';
+                const inner = card.querySelector('.card');
+                inner.className = 'card h-100 shadow-sm border-success'; // Quitar estilos fluo
                 card.querySelector('.card-header').className = 'card-header bg-success text-white d-flex justify-content-between align-items-center';
-                card.querySelector('.card-footer').innerHTML = `<button class="btn btn-success w-100 disabled p-2"><i class="fas fa-bell"></i> Listo</button>`;
+                card.querySelector('.card-footer').innerHTML = `<button class="btn btn-success w-100 disabled"><i class="fas fa-bell"></i> Listo</button>`;
             } else if (data.nuevoEstado === 'entregado') {
-                card.style.opacity = '0'; 
+                card.style.opacity = '0';
                 setTimeout(() => { card.remove(); actualizarContador(); }, 500);
             }
         });
+        
         actualizarContador();
     });
-
-    // ... (función cargarResumenProduccion igual) ...
-    async function cargarResumenProduccion() { /* ... mismo código ... */ }
 </script>
 <%- include('../partials/footer') %>

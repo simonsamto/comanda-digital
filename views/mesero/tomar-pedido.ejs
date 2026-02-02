@@ -15,11 +15,27 @@
 
 <div class="container-fluid mt-2 px-2">
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="m-0">Mesa <%= mesa.numero %></h5>
+        <h5 class="m-0">
+            <% if (typeof pedidoId !== 'undefined') { %>
+                <i class="fas fa-edit text-warning"></i> Editando Mesa <%= mesa.numero %>
+            <% } else { %>
+                Mesa <%= mesa.numero %>
+            <% } %>
+        </h5>
         <a href="/mesero" class="btn btn-sm btn-outline-secondary">Cancelar</a>
     </div>
 
     <form action="/mesero/tomar-pedido/<%= mesa.id %>" method="POST" id="pedido-form">
+        
+        <!-- 
+           CORRECCIÓN CLAVE: 
+           Si existe pedidoId, lo enviamos oculto.
+           El controlador verá esto y sabrá que debe ACTUALIZAR, no crear.
+        -->
+        <% if (typeof pedidoId !== 'undefined') { %>
+            <input type="hidden" name="pedidoId" value="<%= pedidoId %>">
+        <% } %>
+
         <% clientesConMenus.forEach((clienteData, index) => { %>
             <div class="cliente-card card" data-precio-base="<%= parseFloat(clienteData.menu.precio_base) %>">
                 <div class="card-header d-flex justify-content-between">
@@ -28,6 +44,7 @@
                 </div>
                 <div class="card-body">
                     <input type="hidden" name="clientes[<%= index %>][menuId]" value="<%= clienteData.menu.id %>">
+                    
                     <% Object.keys(clienteData.grupos).forEach(nombreGrupo => { %>
                         <div class="grupo-row">
                             <div class="grupo-label"><%= nombreGrupo %></div>
@@ -38,7 +55,7 @@
                                        id="c_<%= index %>_<%= componente.id %>" 
                                        value="<%= componente.id %>"
                                        data-precio="<%= componente.precio %>"
-                                       <%= componente.por_defecto ? 'checked' : '' %>> <!-- AQUÍ ESTÁ EL CHECK POR DEFECTO -->
+                                       <%= componente.por_defecto ? 'checked' : '' %>> <!-- Marca si ya estaba seleccionado -->
                                 <label class="btn btn-outline-secondary" for="c_<%= index %>_<%= componente.id %>">
                                     <%= componente.nombre %>
                                     <% if(componente.precio > 0){ %> <small>+$<%=componente.precio/1000%>k</small> <% } %>
@@ -46,7 +63,13 @@
                             <% }); %>
                         </div>
                     <% }); %>
-                    <input type="text" name="clientes[<%= index %>][notas]" class="form-control input-notas mt-1" placeholder="Nota cocina...">
+                    
+                    <!-- CORRECCIÓN: Pre-llenar notas si existen -->
+                    <input type="text" 
+                           name="clientes[<%= index %>][notas]" 
+                           class="form-control input-notas mt-1" 
+                           placeholder="Nota cocina..."
+                           value="<%= clienteData.notas || '' %>">
                 </div>
             </div>
         <% }); %>
@@ -54,7 +77,14 @@
         <div class="espacio-footer"></div>
         <div class="resumen-flotante d-flex justify-content-between align-items-center">
             <div><small class="text-muted d-block">Total</small><h3 class="m-0 fw-bold text-primary" id="total-pedido">$0</h3></div>
-            <button type="submit" id="btn-enviar" class="btn btn-success btn-lg fw-bold px-4">ENVIAR <i class="fas fa-paper-plane"></i></button>
+            
+            <button type="submit" id="btn-enviar" class="btn <%= (typeof pedidoId !== 'undefined') ? 'btn-warning' : 'btn-success' %> btn-lg fw-bold px-4">
+                <% if (typeof pedidoId !== 'undefined') { %>
+                    ACTUALIZAR <i class="fas fa-sync"></i>
+                <% } else { %>
+                    ENVIAR <i class="fas fa-paper-plane"></i>
+                <% } %>
+            </button>
         </div>
     </form>
 </div>
@@ -77,7 +107,11 @@
         }
 
         form.addEventListener('change', actualizarTotal);
-        form.addEventListener('submit', () => { btnEnviar.disabled = true; btnEnviar.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; });
+        form.addEventListener('submit', () => { 
+            btnEnviar.disabled = true; 
+            btnEnviar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...'; 
+        });
+        
         actualizarTotal();
     });
 </script>

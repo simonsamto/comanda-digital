@@ -2,7 +2,6 @@
     <div class="card h-100 shadow-sm border-2 
         <%= pedido.estado === 'elaborado' ? 'border-success' : 'border-danger' %>">
 
-        <!-- CABECERA: Más compacta -->
         <div class="card-header d-flex justify-content-between align-items-center py-1 px-2
             <%= pedido.estado === 'elaborado' ? 'bg-success text-white' : 'bg-danger text-white' %>">
             <h5 class="mb-0 fw-bold fs-5">Mesa <%= pedido.mesa.numero %></h5>
@@ -17,7 +16,7 @@
 
             <% pedido.items.forEach(item => { %>
                 <div class="mb-2 border-bottom pb-1">
-                    <!-- Fila 1: Cliente y Plato Principal (Fondo gris claro) -->
+                    <!-- Fila 1: Cliente y Plato Principal -->
                     <div class="d-flex justify-content-between align-items-center bg-light px-1 rounded mb-1">
                         <strong class="text-primary small">C-<%= item.cliente_numero %></strong>
                         <span class="fw-bold text-dark small text-truncate" style="max-width: 70%;"><%= item.menu_nombre || 'Plato' %></span>
@@ -59,7 +58,6 @@
                         </div>
                     <% } %>
 
-                    <!-- NOTAS (Resaltadas en amarillo) -->
                     <% if (item.notas) { %>
                         <div class="alert alert-warning py-0 px-1 mt-1 mb-0" style="font-size: 0.8rem; border-left: 3px solid #ffc107;">
                             <strong>OJO:</strong> <%= item.notas %>
