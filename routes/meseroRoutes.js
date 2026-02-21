@@ -9,27 +9,44 @@ const { Mesa, Menu, Grupo, Componente, Pedido, PedidoItem, sequelize } = require
 // ==========================================
 router.get('/', async (req, res) => {
     try {
-        const mesas = await Mesa.findAll({
-            order: [['numero', 'ASC']],
-            include: [{
-                model: Pedido,
-                as: 'pedidos',
-                required: false,
-                where: { estado: { [Op.notIn]: ['pagado', 'cancelado', 'finalizado'] } },
-                order: [['updatedAt', 'DESC']],
-                limit: 1
-            }]
+        const mesas = await Mesa.findAll({ order: [['numero', 'ASC']] });
+
+        const pedidosActivos = await Pedido.findAll({
+            where: { estado: { [Op.in]: ['recibido', 'en_preparacion', 'elaborado', 'entregado'] } },
+            order: [['updatedAt', 'DESC']]
         });
 
-        const menusDelDia = await Menu.findAll({ 
-            where: { activo: true }, 
-            include: [{ model: Componente, as: 'componentes', include: [{ model: Grupo, as: 'grupo' }] }] 
+        const ultimoPedidoPorMesa = {};
+        pedidosActivos.forEach(p => {
+            if (!ultimoPedidoPorMesa[p.mesa_id]) {
+                ultimoPedidoPorMesa[p.mesa_id] = p;
+            }
         });
 
-        res.render('mesero/dashboard', { mesas, menus: menusDelDia, pageTitle: 'Mapa' });
-    } catch (error) { 
+        const mesasConPedido = mesas.map(m => {
+            const mesaJson = m.toJSON();
+            mesaJson.pedidos = ultimoPedidoPorMesa[m.id] ? [ultimoPedidoPorMesa[m.id]] : [];
+            return mesaJson;
+        });
+
+        // LOG DEBUG DASHBOARD
+        console.log("--- DASHBOARD MESERO ---");
+        mesasConPedido.forEach(m => {
+            const p = m.pedidos && m.pedidos.length > 0 ? m.pedidos[0] : null;
+            if (p) console.log(`Mesa ${m.numero}: Estado Pedido=${p.estado} (ID: ${p.id})`);
+            else console.log(`Mesa ${m.numero}: Sin pedido activo.`);
+        });
+
+
+        const menusDelDia = await Menu.findAll({
+            where: { activo: true },
+            include: [{ model: Componente, as: 'componentes', include: [{ model: Grupo, as: 'grupo' }] }]
+        });
+
+        res.render('mesero/dashboard', { mesas: mesasConPedido, menus: menusDelDia, pageTitle: 'Mapa' });
+    } catch (error) {
         console.error("Error mapa mesero:", error);
-        res.status(500).send("Error al cargar el mapa"); 
+        res.status(500).send("Error al cargar el mapa");
     }
 });
 
@@ -61,9 +78,9 @@ router.get('/tomar-pedido/:mesaId', async (req, res) => {
         const mesa = await Mesa.findByPk(mesaId);
         if (!mesa) return res.redirect('/mesero');
 
-        const menusRaw = await Menu.findAll({ 
-            where: { activo: true }, 
-            include: [{ model: Componente, as: 'componentes', attributes: ['nombre'], through: { attributes: ['por_defecto'] } }] 
+        const menusRaw = await Menu.findAll({
+            where: { activo: true },
+            include: [{ model: Componente, as: 'componentes', attributes: ['nombre'], through: { attributes: ['por_defecto'] } }]
         });
 
         if (menusRaw.length === 0) {
@@ -93,15 +110,15 @@ router.post('/personalizar-pedido/:mesaId', async (req, res) => {
 
         for (let i = 1; i <= parseInt(cantidadClientes); i++) {
             const mId = req.body[`cliente_${i}_menu`];
-            if (!mId) continue; 
+            if (!mId) continue;
 
             const menu = await Menu.findByPk(mId);
             const comps = await menu.getComponentes({ include: [{ model: Grupo, as: 'grupo' }] });
-            
+
             const grupos = {};
             comps.forEach(c => {
                 const gNombre = c.grupo ? c.grupo.nombre : 'Otros';
-                if(!grupos[gNombre]) grupos[gNombre] = { id: c.grupo ? c.grupo.id : 999, componentes: [] };
+                if (!grupos[gNombre]) grupos[gNombre] = { id: c.grupo ? c.grupo.id : 999, componentes: [] };
                 const isDefault = c.MenuComponente ? c.MenuComponente.por_defecto : false;
                 grupos[gNombre].componentes.push({ id: c.id, nombre: c.nombre, precio: c.precio_adicional, por_defecto: isDefault });
             });
@@ -116,6 +133,9 @@ router.post('/personalizar-pedido/:mesaId', async (req, res) => {
 // ==========================================
 router.get('/editar-pedido/:pedidoId', async (req, res) => {
     try {
+        // DEBUG LOGS
+        console.log(`[EDITAR PEDIDO] Solicitud para pedido ID: ${req.params.pedidoId}`);
+
         const pedido = await Pedido.findByPk(req.params.pedidoId, {
             include: [
                 { model: Mesa, as: 'mesa' },
@@ -123,7 +143,16 @@ router.get('/editar-pedido/:pedidoId', async (req, res) => {
             ]
         });
 
-        if (!pedido || (pedido.estado !== 'recibido' && pedido.estado !== 'en_preparacion')) {
+        if (!pedido) {
+            console.log("❌ Pedido no encontrado");
+            req.flash('error_msg', 'Pedido no encontrado.');
+            return res.redirect('/mesero');
+        }
+
+        console.log(`Estado del pedido: ${pedido.estado}`);
+
+        if (pedido.estado !== 'recibido' && pedido.estado !== 'en_preparacion') {
+            console.log("❌ Estado inválido para editar");
             req.flash('error_msg', 'Este pedido ya no se puede editar.');
             return res.redirect('/mesero');
         }
@@ -132,7 +161,32 @@ router.get('/editar-pedido/:pedidoId', async (req, res) => {
         const gruposDb = await Grupo.findAll({ include: [{ model: Componente, as: 'componentes' }] });
 
         for (const item of pedido.items) {
-            const menuSimulado = { id: 0, nombre: item.menu_nombre, precio_base: item.precio_unitario };
+            // INTENTO DE RECUPERACIÓN DE MENÚ ORIGINAL POR NOMBRE
+            let menuOriginal = null;
+            try {
+                if (item.menu_nombre) {
+                    console.log(`Buscando menú original para: ${item.menu_nombre}`);
+                    // Buscamos exacto primero
+                    menuOriginal = await Menu.findOne({ where: { nombre: item.menu_nombre } });
+                    // Si falla, intentamos like
+                    if (!menuOriginal) {
+                        menuOriginal = await Menu.findOne({ where: { nombre: { [Op.like]: `%${item.menu_nombre}%` } } });
+                    }
+                }
+            } catch (errBusqueda) {
+                console.warn(`Error buscando menú original para item ${item.id}:`, errBusqueda.message);
+                menuOriginal = null;
+            }
+
+            // DEBUG LOG
+            if (menuOriginal) console.log(`✅ Menú recuperado: ${menuOriginal.nombre} (${menuOriginal.precio_base})`);
+            else console.log(`⚠️ Menú NO recuperado, usando fallback.`);
+
+            // Si encontramos el menú real, usamos sus datos. Si no, simulamos con lo que hay en el ítem.
+            const menuSimulado = menuOriginal
+                ? { id: menuOriginal.id, nombre: menuOriginal.nombre, precio_base: menuOriginal.precio_base }
+                : { id: 0, nombre: item.menu_nombre, precio_base: item.precio_unitario };
+
             const gruposOrganizados = {};
             const idsSeleccionados = item.componentes.map(c => c.id);
 
@@ -159,18 +213,30 @@ router.get('/editar-pedido/:pedidoId', async (req, res) => {
 // ==========================================
 router.post('/tomar-pedido/:mesaId', async (req, res) => {
     const { mesaId } = req.params;
-    const { clientes, pedidoId } = req.body; 
+    const { clientes, pedidoId } = req.body;
 
     if (!clientes) return res.redirect('/mesero');
-    
+
     const t = await sequelize.transaction();
     try {
         let pedido;
         let esActualizacion = false;
+        let componentesPreviosPorCliente = {};
 
         if (pedidoId) {
             // ACTUALIZAR
-            pedido = await Pedido.findByPk(pedidoId);
+            pedido = await Pedido.findByPk(pedidoId, {
+                include: [{ model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes' }] }]
+            });
+
+            if (pedido && pedido.items) {
+                pedido.items.forEach(item => {
+                    const cliente = item.cliente_numero;
+                    if (!componentesPreviosPorCliente[cliente]) componentesPreviosPorCliente[cliente] = new Set();
+                    (item.componentes || []).forEach(c => componentesPreviosPorCliente[cliente].add(c.id));
+                });
+            }
+
             await PedidoItem.destroy({ where: { pedido_id: pedidoId }, transaction: t });
             esActualizacion = true;
         } else {
@@ -179,28 +245,47 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
         }
 
         for (const idx in clientes) {
-            const cData = clientes[idx]; 
+            const cData = clientes[idx];
             let menuNombre = 'Plato';
             let precioUnitario = 0;
 
             if (cData.menuId && cData.menuId != '0') {
                 const menu = await Menu.findByPk(cData.menuId);
-                if(menu) { menuNombre = menu.nombre; precioUnitario = menu.precio_base; }
+                if (menu) {
+                    menuNombre = menu.nombre;
+                    precioUnitario = menu.precio_base;
+                } else if (cData.precio_base) {
+                    // Fallback si trae ID pero no se encuentra (raro, pero posible)
+                    precioUnitario = cData.precio_base;
+                    if (cData.nombre_menu) menuNombre = cData.nombre_menu;
+                }
             } else if (esActualizacion) {
-                // Si es edición y no viene menuId, usamos un valor por defecto o lógica adicional
-                menuNombre = 'Plato Editado'; 
+                // LÓGICA DE RECUPERACIÓN EN EDICIÓN
+                // Si viene el precio base y nombre desde el formulario oculto, USARLOS.
+                if (cData.precio_base) {
+                    precioUnitario = cData.precio_base;
+                }
+                if (cData.nombre_menu) {
+                    menuNombre = cData.nombre_menu;
+                } else {
+                    menuNombre = 'Plato Editado';
+                }
             }
 
-            const idsComponentes = Object.values(cData).flat()
-                .filter(v => !isNaN(parseInt(v)) && v != cData.menuId && v != pedidoId)
-                .map(id => parseInt(id));
-            
-            const item = await PedidoItem.create({ 
-                pedido_id: pedido.id, 
-                cliente_numero: parseInt(idx) + 1, 
-                notas: cData.notas || '', 
-                precio_unitario: precioUnitario, 
-                menu_nombre: menuNombre 
+            // Solo tomar IDs de componentes desde llaves numéricas (ids de grupo),
+            // evitando capturar menuId, precio_base u otros campos ocultos.
+            const idsComponentes = Object.entries(cData)
+                .filter(([key]) => /^\d+$/.test(key))
+                .flatMap(([, value]) => Array.isArray(value) ? value : [value])
+                .map(v => parseInt(v, 10))
+                .filter(id => !isNaN(id));
+
+            const item = await PedidoItem.create({
+                pedido_id: pedido.id,
+                cliente_numero: parseInt(idx) + 1,
+                notas: cData.notas || '',
+                precio_unitario: precioUnitario,
+                menu_nombre: menuNombre
             }, { transaction: t });
 
             if (idsComponentes.length > 0) await item.setComponentes(idsComponentes, { transaction: t });
@@ -215,26 +300,53 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
         const io = req.app.get('socketio');
         if (io) {
             const pedidoCompleto = await Pedido.findByPk(pedido.id, {
-                include: [{ model: Mesa, as: 'mesa' }, { model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes', include: [{model: Grupo, as: 'grupo'}] }] }]
+                include: [{ model: Mesa, as: 'mesa' }, { model: PedidoItem, as: 'items', include: [{ model: Componente, as: 'componentes', include: [{ model: Grupo, as: 'grupo' }] }] }]
             });
-            
+
+            const pedidoPayload = pedidoCompleto ? pedidoCompleto.toJSON() : null;
+
+            if (esActualizacion && pedidoPayload && pedidoPayload.items) {
+                pedidoPayload.items = pedidoPayload.items.map(item => {
+                    const cliente = item.cliente_numero;
+                    const prevSet = componentesPreviosPorCliente[cliente] || new Set();
+                    const componentesMarcados = (item.componentes || []).map(c => ({
+                        ...c,
+                        es_nuevo: !prevSet.has(c.id)
+                    }));
+
+                    return {
+                        ...item,
+                        componentes: componentesMarcados
+                    };
+                });
+
+                // DEBUG TEMPORAL: verificar qué llega marcado como nuevo al socket
+                const resumenCambios = pedidoPayload.items.map(item => ({
+                    cliente: item.cliente_numero,
+                    nuevos: (item.componentes || [])
+                        .filter(c => c.es_nuevo)
+                        .map(c => ({ id: c.id, nombre: c.nombre }))
+                }));
+                console.log('DEBUG pedido_modificado cambios:', JSON.stringify(resumenCambios));
+            }
+
             if (esActualizacion) {
                 console.log(">>> SOCKET: Emitiendo 'pedido_modificado'");
-                io.emit('pedido_modificado', pedidoCompleto.toJSON());
+                io.emit('pedido_modificado', pedidoPayload);
             } else {
                 console.log(">>> SOCKET: Emitiendo 'nuevo_pedido'");
-                io.emit('nuevo_pedido', pedidoCompleto.toJSON());
+                io.emit('nuevo_pedido', pedidoPayload);
             }
         }
-        
+
         req.flash('success_msg', esActualizacion ? '¡Pedido modificado!' : '¡Pedido enviado a cocina!');
         res.redirect('/mesero');
 
-    } catch (error) { 
-        await t.rollback(); 
+    } catch (error) {
+        await t.rollback();
         console.error("Error al guardar:", error);
-        req.flash('error_msg', 'Error al guardar.');
-        res.redirect('/mesero'); 
+        req.flash('error_msg', `Error al guardar pedido: ${error.message}`);
+        res.redirect('/mesero');
     }
 });
 
@@ -243,18 +355,41 @@ router.post('/tomar-pedido/:mesaId', async (req, res) => {
 // ==========================================
 router.post('/entregar-pedido/:mesaId', async (req, res) => {
     try {
-        const pedidos = await Pedido.findAll({ where: { mesa_id: req.params.mesaId, estado: ['elaborado', 'recibido', 'en_preparacion'] } });
-        if (pedidos.length > 0) {
-            await Pedido.update({ estado: 'entregado' }, { where: { mesa_id: req.params.mesaId, estado: ['elaborado', 'recibido', 'en_preparacion'] } });
-            
-            const io = req.app.get('socketio');
-            if (io) pedidos.forEach(p => io.emit('actualizacion_estado', { pedidoId: p.id, nuevoEstado: 'entregado' }));
+        const mesaId = parseInt(req.params.mesaId, 10);
+        if (!mesaId || isNaN(mesaId)) {
+            req.flash('error_msg', 'Mesa inválida para entrega.');
+            return res.redirect('/mesero');
         }
 
-        await Mesa.update({ estado: 'por_cobrar' }, { where: { id: req.params.mesaId } });
+        const pedidos = await Pedido.findAll({
+            where: {
+                mesa_id: mesaId,
+                estado: { [Op.in]: ['elaborado', 'recibido', 'en_preparacion'] }
+            }
+        });
+
+        if (pedidos.length === 0) {
+            req.flash('error_msg', 'No hay pedidos listos para entregar en esta mesa.');
+            return res.redirect('/mesero');
+        }
+
+        await Pedido.update(
+            { estado: 'entregado' },
+            {
+                where: {
+                    id: { [Op.in]: pedidos.map(p => p.id) }
+                }
+            }
+        );
+
+        await Mesa.update({ estado: 'por_cobrar' }, { where: { id: mesaId } });
+
         const io = req.app.get('socketio');
-        if (io) io.emit('mesa_por_cobrar', { mesaId: req.params.mesaId });
-        
+        if (io) {
+            pedidos.forEach(p => io.emit('actualizacion_estado', { pedidoId: p.id, nuevoEstado: 'entregado' }));
+            io.emit('mesa_por_cobrar', { mesaId });
+        }
+
         res.redirect('/mesero');
     } catch (error) { res.redirect('/mesero'); }
 });

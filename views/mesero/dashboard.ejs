@@ -1,243 +1,381 @@
 <%- include('../partials/header') %>
 
-<style>
-    /* Estilos del Mapa y Lista */
-    #vista-mapa {
-        position: relative; width: 100%; height: 600px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; overflow: auto;
-        background-image: radial-gradient(#ced4da 1px, transparent 1px); background-size: 20px 20px;
-    }
-    .mesa-real {
-        position: absolute; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: transform 0.2s; text-decoration: none !important; color: white; z-index: 10;
-    }
-    .mesa-real:hover { transform: scale(1.05); z-index: 20; }
-    
-    .mesa-card-mobile {
-        height: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px; color: white;
-        text-decoration: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.1s;
-    }
-    .mesa-card-mobile:active { transform: scale(0.95); }
+    <style>
+        /* Estilos del Mapa y Lista */
+        #vista-mapa {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: auto;
+            background-image: radial-gradient(#ced4da 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
 
-    /* COLORES DE ESTADO */
-    .bg-libre { background-color: #198754; border: 2px solid #146c43; } /* Verde */
-    .bg-ocupada { background-color: #dc3545; border: 2px solid #b02a37; } /* Rojo */
-    .bg-recoger { background-color: #0dcaf0; border: 2px solid #0aa2c0; color: #000; animation: pulse-blue 2s infinite; } /* Azul */
-    .bg-caja { background-color: #ffc107; border: 2px solid #cc9a06; color: #000; cursor: not-allowed; } /* Amarillo */
+        .mesa-real {
+            position: absolute;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s;
+            text-decoration: none !important;
+            color: white;
+            z-index: 10;
+        }
 
-    @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); } 100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); } }
-    .d-none-custom { display: none !important; }
-</style>
+        .mesa-real:hover {
+            transform: scale(1.05);
+            z-index: 20;
+        }
 
-<div class="container-fluid mt-3">
-    
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="m-0"><i class="fas fa-map-marked-alt"></i> Mesas</h2>
-        
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-warning me-2 fw-bold" data-bs-toggle="modal" data-bs-target="#modalMenusHoy">
-                <i class="fas fa-utensils"></i> Oferta Hoy
-            </button>
-            <button type="button" class="btn btn-outline-primary active" id="btn-ver-lista" onclick="cambiarVista('lista')">
-                <i class="fas fa-th-large"></i>
-            </button>
-            <button type="button" class="btn btn-outline-primary" id="btn-ver-mapa" onclick="cambiarVista('mapa')">
-                <i class="fas fa-map"></i>
-            </button>
-        </div>
-    </div>
+        .mesa-card-mobile {
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.1s;
+        }
 
-    <!-- LEYENDA -->
-    <div class="mb-3 small">
-        <span class="badge bg-success me-1">Libre</span>
-        <span class="badge bg-danger me-1">Cocina (Editar)</span>
-        <span class="badge bg-info text-dark me-1">¡Recoger!</span>
-        <span class="badge bg-warning text-dark">Caja</span>
-    </div>
+        .mesa-card-mobile:active {
+            transform: scale(0.95);
+        }
 
-    <!-- LÓGICA DE ESTADOS -->
- <!-- LÓGICA DE ESTADOS Y BLOQUEO -->
-    <% 
-        function obtenerEstadoMesa(mesa) {
-            // 1. Buscamos el pedido activo más reciente
-            let pedidoActivo = null;
-            if (mesa.pedidos && mesa.pedidos.length > 0) {
-                // Como ordenamos por fecha en el controlador, el [0] es el último
-                pedidoActivo = mesa.pedidos[0];
+        /* COLORES DE ESTADO */
+        .bg-libre {
+            background-color: #198754;
+            border: 2px solid #146c43;
+        }
+
+        /* Verde */
+        .bg-ocupada {
+            background-color: #dc3545;
+            border: 2px solid #b02a37;
+        }
+
+        /* Rojo */
+        .bg-recoger {
+            background-color: #0dcaf0;
+            border: 2px solid #0aa2c0;
+            color: #000;
+            animation: pulse-blue 2s infinite;
+        }
+
+        /* Azul */
+        .bg-caja {
+            background-color: #ffc107;
+            border: 2px solid #cc9a06;
+            color: #000;
+            cursor: not-allowed;
+        }
+
+        /* Amarillo */
+
+        @keyframes pulse-blue {
+            0% {
+                box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7);
             }
 
-            let data = {
-                color: 'bg-libre', icon: 'fa-chair', texto: 'Libre',
-                link: `/mesero/mesa/${mesa.id}/clientes`,
-                esForm: false, bloqueado: false, confirm: false
-            };
+            70% {
+                box-shadow: 0 0 0 10px rgba(13, 202, 240, 0);
+            }
 
-            // 2. LA VERDAD ESTÁ EN EL PEDIDO
-            if (pedidoActivo) {
-                if (pedidoActivo.estado === 'elaborado') {
-                    // Si el pedido está listo, la mesa ES PARA RECOGER (Azul)
-                    // (Ignoramos mesa.estado si dice otra cosa)
-                    data.color = 'bg-recoger'; 
-                    data.icon = 'fa-bell fa-shake'; 
-                    data.texto = '¡RECOGER!'; 
-                    data.esForm = true;
+            100% {
+                box-shadow: 0 0 0 0 rgba(13, 202, 240, 0);
+            }
+        }
 
-                } else if (pedidoActivo.estado === 'recibido' || pedidoActivo.estado === 'en_preparacion') {
-                    // Si están cocinando (Rojo)
-                    data.color = 'bg-ocupada'; 
-                    data.icon = 'fa-fire'; 
-                    data.texto = 'En Cocina (Editar)';
-                    data.link = `/mesero/editar-pedido/${pedidoActivo.id}`;
-                    data.confirm = true;
+        .d-none-custom {
+            display: none !important;
+        }
+    </style>
 
-                } else if (pedidoActivo.estado === 'entregado') {
-                    // Si ya se entregó pero no se ha pagado (Amarillo)
+    <div class="container-fluid mt-3">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="m-0"><i class="fas fa-map-marked-alt"></i> Mesas</h2>
+
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-warning me-2 fw-bold" data-bs-toggle="modal"
+                    data-bs-target="#modalMenusHoy">
+                    <i class="fas fa-utensils"></i> Oferta Hoy
+                </button>
+                <button type="button" class="btn btn-outline-primary active" id="btn-ver-lista"
+                    onclick="cambiarVista('lista')">
+                    <i class="fas fa-th-large"></i>
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btn-ver-mapa" onclick="cambiarVista('mapa')">
+                    <i class="fas fa-map"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- LEYENDA -->
+        <div class="mb-3 small">
+            <span class="badge bg-success me-1">Libre</span>
+            <span class="badge bg-danger me-1">Cocina (Editar)</span>
+            <span class="badge bg-info text-dark me-1">¡Recoger!</span>
+            <span class="badge bg-warning text-dark">Caja</span>
+        </div>
+
+        <!-- LÓGICA DE ESTADOS -->
+        <!-- LÓGICA DE ESTADOS Y BLOQUEO -->
+        <% 
+            function obtenerEstadoMesa(mesa) {
+                // 1. Buscamos el pedido activo más reciente
+                let pedidoActivo = null; 
+                if (mesa.pedidos && mesa.pedidos.length > 0) {
+                    // Como ordenamos por fecha en el controlador, el [0] es el último
+                    pedidoActivo = mesa.pedidos[0];
+                }
+
+                let data = {
+                    color: 'bg-libre', icon: 'fa-chair', texto: 'Libre',
+                    link: `/mesero/mesa/${mesa.id}/clientes`,
+                    esForm: false, bloqueado: false, confirm: false,
+                    debug: 'Sin Pedido Activo'
+                };
+
+                // 2. LA VERDAD ESTÁ EN EL PEDIDO
+                if (pedidoActivo) {
+                    data.debug = `Ord:${pedidoActivo.id} [${pedidoActivo.estado}]`;
+
+                    if (pedidoActivo.estado === 'elaborado') {
+                        // Si el pedido está listo, la mesa ES PARA RECOGER (Azul)
+                        data.color = 'bg-recoger'; 
+                        data.icon = 'fa-bell fa-shake'; 
+                        data.texto = '¡RECOGER!'; 
+                        data.esForm = true;
+
+                    } else if (pedidoActivo.estado === 'recibido' || pedidoActivo.estado === 'en_preparacion') {
+                        // Si están cocinando (Rojo)
+                        data.color = 'bg-ocupada'; 
+                        data.icon = 'fa-fire'; 
+                        data.texto = 'En Cocina (Editar)';
+                        data.link = `/mesero/editar-pedido/${pedidoActivo.id}`;
+                        data.confirm = true;
+
+                    } else if (pedidoActivo.estado === 'entregado') {
+                        // Si ya se entregó pero no se ha pagado (Amarillo)
+                        data.color = 'bg-caja'; 
+                        data.icon = 'fa-cash-register'; 
+                        data.texto = 'En Caja'; 
+                        data.link = '#'; 
+                        data.bloqueado = true;
+                    }
+                } 
+                // Si no hay pedido activo, miramos mesa.estado como respaldo
+                else if (mesa.estado === 'ocupado') {
+                    data.color = 'bg-ocupada';
+                    data.icon = 'fa-fire';
+                    data.texto = 'En Cocina';
+                    data.link = '#';
+                    data.bloqueado = true;
+                    data.debug = 'Mesa: ocupado (fallback)';
+                }
+                else if (mesa.estado === 'por_cobrar') {
                     data.color = 'bg-caja'; 
                     data.icon = 'fa-cash-register'; 
                     data.texto = 'En Caja'; 
                     data.link = '#'; 
                     data.bloqueado = true;
+                    data.debug = 'Mesa: por_cobrar';
                 }
-            } 
-            // Si no hay pedido activo, miramos mesa.estado como respaldo
-            else if (mesa.estado === 'por_cobrar') {
-                data.color = 'bg-caja'; data.icon = 'fa-cash-register'; data.texto = 'En Caja'; data.link = '#'; data.bloqueado = true;
+
+                return data;
             }
+        %>
 
-            return data;
-        }
-    %>
 
-    
-    <!-- VISTA LISTA -->
-    <div id="vista-lista" class="row g-3">
-        <% mesas.forEach(mesa => { %>
-            <% const info = obtenerEstadoMesa(mesa); %>
-            <div class="col-4 col-sm-3 col-md-2">
-                <% if (info.esForm) { %>
-                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="height:100%">
-                        <button type="submit" class="card w-100 mesa-card-mobile <%= info.color %> border-0 p-0" onclick="return confirm('¿Confirmar entrega?');">
-                            <i class="fas <%= info.icon %> fa-2x mb-1"></i><div class="fw-bold fs-5"><%= mesa.numero %></div><small style="font-size: 0.7rem;"><%= info.texto %></small>
-                        </button>
-                    </form>
-                <% } else { %>
-                    <a href="<%= info.link %>" class="mesa-card-mobile <%= info.color %>" 
-                       <%= info.bloqueado ? 'style="opacity:0.8; cursor:not-allowed;" onclick="return false;"' : '' %>
-                       <%= info.confirm ? "onclick=\"return confirm('¿Modificar pedido?');\"" : '' %>>
-                        <i class="fas <%= info.icon %> fa-2x mb-1"></i><div class="fw-bold fs-5"><%= mesa.numero %></div><small style="font-size: 0.7rem;"><%= info.texto %></small>
-                    </a>
-                <% } %>
-            </div>
-        <% }); %>
-    </div>
-
-    <!-- VISTA MAPA -->
-    <div id="vista-mapa" class="d-none-custom">
-        <% mesas.forEach(mesa => { %>
-            <% const info = obtenerEstadoMesa(mesa); %>
-            <div class="mesa-real <%= info.color %>" style="left: <%= mesa.pos_x || 0 %>px; top: <%= mesa.pos_y || 0 %>px; width: <%= mesa.ancho || 120 %>px; height: <%= mesa.alto || 120 %>px;">
-                <% if (info.esForm) { %>
-                    <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="width:100%; height:100%; position:absolute;">
-                        <button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;" title="Clic para entregar"></button>
-                    </form>
-                <% } else if (info.link !== '#') { %>
-                    <a href="<%= info.link %>" style="position:absolute; width:100%; height:100%;" <%= info.confirm ? "onclick=\"return confirm('¿Modificar pedido?');\"" : '' %>></a>
-                <% } %>
-                <div style="font-size: 1.2rem; font-weight: bold;"><%= mesa.numero %></div><div style="font-size: 0.6rem;"><%= info.texto %></div>
-            </div>
-        <% }); %>
-    </div>
-</div>
-
-<!-- MODAL MENÚS -->
-<div class="modal fade" id="modalMenusHoy" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-utensils me-2"></i> Oferta del Día</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0">
-                <% if (!menus || menus.length === 0) { %>
-                    <div class="p-5 text-center text-muted"><h5>No hay menús activos hoy.</h5></div>
-                <% } else { %>
-                    <div class="list-group list-group-flush">
-                        <% menus.forEach((menu, index) => { %>
-                            <% 
-                                const grupos = {};
-                                const orden = ['Sopa', 'Principio', 'Proteína', 'Proteina', 'Bebida'];
-                                menu.componentes.forEach(comp => {
-                                    const g = comp.grupo ? comp.grupo.nombre : 'Otros';
-                                    if (!grupos[g]) grupos[g] = [];
-                                    grupos[g].push(comp.nombre);
-                                });
-                                const claves = Object.keys(grupos).sort((a,b) => (orden.indexOf(a)===-1?99:orden.indexOf(a)) - (orden.indexOf(b)===-1?99:orden.indexOf(b)));
-                            %>
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button <%= index !== 0 ? 'collapsed' : '' %>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<%= index %>">
-                                        <div class="d-flex w-100 justify-content-between me-3 align-items-center">
-                                            <span class="fw-bold"><%= menu.nombre %></span>
-                                            <span class="badge bg-success rounded-pill">$<%= parseFloat(menu.precio_base).toLocaleString('es-CO') %></span>
-                                        </div>
-                                    </button>
-                                </h2>
-                                <div id="collapse<%= index %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" data-bs-parent="#accordionMenus">
-                                    <div class="accordion-body bg-light">
-                                        <% if (claves.length > 0) { %>
-                                            <div class="row">
-                                                <% claves.forEach(grupo => { %>
-                                                    <div class="col-md-6 mb-2">
-                                                        <strong class="text-primary d-block border-bottom pb-1 mb-1"><%= grupo %></strong>
-                                                        <ul class="list-unstyled ps-2 mb-0">
-                                                            <% grupos[grupo].forEach(item => { %>
-                                                                <li><i class="fas fa-check text-success me-2 small"></i><%= item %></li>
-                                                            <% }); %>
-                                                        </ul>
-                                                    </div>
-                                                <% }); %>
-                                            </div>
-                                        <% } else { %><p class="text-muted">Sin detalles.</p><% } %>
-                                    </div>
-                                </div>
-                            </div>
-                        <% }); %>
+        <!-- VISTA LISTA -->
+        <div id="vista-lista" class="row g-3">
+            <% mesas.forEach(mesa=> { %>
+                <% const info=obtenerEstadoMesa(mesa); %>
+                    <div class="col-4 col-sm-3 col-md-2">
+                        <% if (info.esForm) { %>
+                            <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST" style="height:100%">
+                                <button type="submit"
+                                    class="card w-100 mesa-card-mobile <%= info.color %> border-0 p-0"
+                                    onclick="return confirm('¿Confirmar entrega?');">
+                                    <i class="fas <%= info.icon %> fa-2x mb-1"></i>
+                                    <div class="fw-bold fs-5">
+                                        <%= mesa.numero %>
+                                    </div><small style="font-size: 0.7rem;">
+                                        <%= info.texto %>
+                                    </small>
+                                </button>
+                            </form>
+                            <% } else { %>
+                                <a href="<%= info.link %>" class="mesa-card-mobile <%= info.color %>"
+                                    <%=info.bloqueado
+                                    ? 'style="opacity:0.8; cursor:not-allowed;" onclick="return false;"' : '' %>
+                                    <%= info.confirm ? "onclick=\" return confirm('¿Modificar pedido?');\"" : '' %>>
+                                        <i class="fas <%= info.icon %> fa-2x mb-1"></i>
+                                        <div class="fw-bold fs-5">
+                                            <%= mesa.numero %>
+                                        </div><small style="font-size: 0.7rem;">
+                                            <%= info.texto %>
+                                        </small>
+                                </a>
+                                <% } %>
                     </div>
-                <% } %>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">Cerrar</button></div>
+                    <% }); %>
+        </div>
+
+        <!-- VISTA MAPA -->
+        <div id="vista-mapa" class="d-none-custom">
+            <% mesas.forEach(mesa=> { %>
+                <% const info=obtenerEstadoMesa(mesa); %>
+                    <div class="mesa-real <%= info.color %>"
+                        style="left: <%= mesa.pos_x || 0 %>px; top: <%= mesa.pos_y || 0 %>px; width: <%= mesa.ancho || 120 %>px; height: <%= mesa.alto || 120 %>px;">
+                        <% if (info.esForm) { %>
+                            <form action="/mesero/entregar-pedido/<%= mesa.id %>" method="POST"
+                                style="width:100%; height:100%; position:absolute;">
+                                <button type="submit" style="width:100%; height:100%; opacity:0; cursor:pointer;"
+                                    title="Clic para entregar"></button>
+                            </form>
+                            <% } else if (info.link !=='#' ) { %>
+                                <a href="<%= info.link %>" style="position:absolute; width:100%; height:100%;"
+                                    <%=info.confirm ? "onclick=\" return confirm('¿Modificar pedido?');\"" : '' %>></a>
+                                <% } %>
+                                    <div style="font-size: 1.2rem; font-weight: bold;">
+                                        <%= mesa.numero %>
+                                    </div>
+                                    <div style="font-size: 0.6rem;">
+                                        <%= info.texto %>
+                                    </div>
+                                    <!-- DEBUG VISUAL -->
+                                    <div
+                                        style="font-size: 0.5rem; color: #fff; background: rgba(0,0,0,0.5); padding: 1px;">
+                                        <%= info.debug || '' %>
+                                    </div>
+                    </div>
+                    <% }); %>
         </div>
     </div>
-</div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io();
-    socket.on('pedido_listo_para_recoger', () => location.reload());
-    socket.on('mesa_liberada', () => location.reload()); 
-    // Recargar si hay nuevo pedido (para cambiar estado si estaba libre)
-    socket.on('nuevo_pedido', () => location.reload());
+    <!-- MODAL MENÚS -->
+    <div class="modal fade" id="modalMenusHoy" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-utensils me-2"></i> Oferta del Día</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <% if (!menus || menus.length===0) { %>
+                        <div class="p-5 text-center text-muted">
+                            <h5>No hay menús activos hoy.</h5>
+                        </div>
+                        <% } else { %>
+                            <div class="list-group list-group-flush">
+                                <% menus.forEach((menu, index)=> { %>
+                                    <% 
+                                        const grupos={}; 
+                                        const orden=['Sopa', 'Principio' , 'Proteína' , 'Proteina' , 'Bebida' ]; 
+                                        menu.componentes.forEach(comp=> {
+                                            const g = comp.grupo ? comp.grupo.nombre : 'Otros';
+                                            if (!grupos[g]) grupos[g] = [];
+                                            grupos[g].push(comp.nombre);
+                                        });
+                                        const claves = Object.keys(grupos).sort((a,b) =>
+                                            (orden.indexOf(a)===-1?99:orden.indexOf(a)) -
+                                            (orden.indexOf(b)===-1?99:orden.indexOf(b)));
+                                    %>
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button <%= index !== 0 ? 'collapsed' : '' %>"
+                                                type="button" data-bs-toggle="collapse"
+                                                data-bs-target="#collapse<%= index %>">
+                                                <div class="d-flex w-100 justify-content-between me-3 align-items-center">
+                                                    <span class="fw-bold">
+                                                        <%= menu.nombre %>
+                                                    </span>
+                                                    <span class="badge bg-success rounded-pill">$<%=
+                                                            parseFloat(menu.precio_base).toLocaleString('es-CO') %>
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        </h2>
+                                        <div id="collapse<%= index %>"
+                                            class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>"
+                                            data-bs-parent="#accordionMenus">
+                                            <div class="accordion-body bg-light">
+                                                <% if (claves.length> 0) { %>
+                                                    <div class="row">
+                                                        <% claves.forEach(grupo=> { %>
+                                                            <div class="col-md-6 mb-2">
+                                                                <strong
+                                                                    class="text-primary d-block border-bottom pb-1 mb-1">
+                                                                    <%= grupo %>
+                                                                </strong>
+                                                                <ul class="list-unstyled ps-2 mb-0">
+                                                                    <% grupos[grupo].forEach(item=> { %>
+                                                                        <li><i
+                                                                                class="fas fa-check text-success me-2 small"></i>
+                                                                            <%= item %>
+                                                                        </li>
+                                                                        <% }); %>
+                                                                </ul>
+                                                            </div>
+                                                            <% }); %>
+                                                    </div>
+                                                    <% } else { %>
+                                                        <p class="text-muted">Sin detalles.</p>
+                                                        <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <% }); %>
+                            </div>
+                            <% } %>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary w-100"
+                        data-bs-dismiss="modal">Cerrar</button></div>
+            </div>
+        </div>
+    </div>
 
-    const vistaLista = document.getElementById('vista-lista');
-    const vistaMapa = document.getElementById('vista-mapa');
-    const btnLista = document.getElementById('btn-ver-lista');
-    const btnMapa = document.getElementById('btn-ver-mapa');
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        socket.on('pedido_listo_para_recoger', () => location.reload());
+        socket.on('mesa_liberada', () => location.reload());
+        socket.on('mesa_por_cobrar', () => location.reload());
+        socket.on('actualizacion_estado', () => location.reload());
+        // Recargar si hay nuevo pedido (para cambiar estado si estaba libre)
+        socket.on('nuevo_pedido', () => location.reload());
 
-    function cambiarVista(vista) {
-        if (vista === 'lista') {
-            vistaLista.classList.remove('d-none-custom'); vistaMapa.classList.add('d-none-custom');
-            btnLista.classList.add('active'); btnMapa.classList.remove('active');
-            localStorage.setItem('vistaPreferida', 'lista');
-        } else {
-            vistaLista.classList.add('d-none-custom'); vistaMapa.classList.remove('d-none-custom');
-            btnLista.classList.remove('active'); btnMapa.classList.add('active');
-            localStorage.setItem('vistaPreferida', 'mapa');
+        const vistaLista = document.getElementById('vista-lista');
+        const vistaMapa = document.getElementById('vista-mapa');
+        const btnLista = document.getElementById('btn-ver-lista');
+        const btnMapa = document.getElementById('btn-ver-mapa');
+
+        function cambiarVista(vista) {
+            if (vista === 'lista') {
+                vistaLista.classList.remove('d-none-custom'); vistaMapa.classList.add('d-none-custom');
+                btnLista.classList.add('active'); btnMapa.classList.remove('active');
+                localStorage.setItem('vistaPreferida', 'lista');
+            } else {
+                vistaLista.classList.add('d-none-custom'); vistaMapa.classList.remove('d-none-custom');
+                btnLista.classList.remove('active'); btnMapa.classList.add('active');
+                localStorage.setItem('vistaPreferida', 'mapa');
+            }
         }
-    }
-    document.addEventListener('DOMContentLoaded', () => {
-        const pref = localStorage.getItem('vistaPreferida');
-        const esMovil = window.innerWidth < 768;
-        if (pref) cambiarVista(pref);
-        else esMovil ? cambiarVista('lista') : cambiarVista('mapa');
-    });
-</script>
-<%- include('../partials/footer') %>
+        document.addEventListener('DOMContentLoaded', () => {
+            const pref = localStorage.getItem('vistaPreferida');
+            const esMovil = window.innerWidth < 768;
+            if (pref) cambiarVista(pref);
+            else esMovil ? cambiarVista('lista') : cambiarVista('mapa');
+        });
+    </script>
+    <%- include('../partials/footer') %>

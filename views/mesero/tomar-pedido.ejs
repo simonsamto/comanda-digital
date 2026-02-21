@@ -44,6 +44,8 @@
                 </div>
                 <div class="card-body">
                     <input type="hidden" name="clientes[<%= index %>][menuId]" value="<%= clienteData.menu.id %>">
+                    <input type="hidden" name="clientes[<%= index %>][nombre_menu]" value="<%= clienteData.menu.nombre %>">
+                    <input type="hidden" name="clientes[<%= index %>][precio_base]" value="<%= clienteData.menu.precio_base %>">
                     
                     <% Object.keys(clienteData.grupos).forEach(nombreGrupo => { %>
                         <div class="grupo-row">

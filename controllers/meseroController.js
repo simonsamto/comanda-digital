@@ -1,5 +1,6 @@
 'use strict';
-const { Mesa, Categoria, Producto, Menu, Componente, Grupo } = require('../models');
+const { Mesa, Categoria, Producto, Menu, Componente, Grupo, Pedido, PedidoItem } = require('../models');
+
 
 // 1. Mostrar mapa de mesas
 exports.showMesas = async (req, res) => {

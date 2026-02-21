@@ -73,7 +73,9 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 
 // Si estamos en producción (Render), no usamos alter: true para evitar errores con TiDB
-const syncOptions = process.env.NODE_ENV === 'production' ? {} : { alter: true };
+// Si estamos en producción (Render), no usamos alter: true para evitar errores con TiDB
+// TEMPORAL: Desactivado alter: true tambien en dev para evitar error de too many keys
+const syncOptions = {}; // process.env.NODE_ENV === 'production' ? {} : { alter: true };
 
 db.sequelize.sync(syncOptions).then(() => {
     console.log('✅ Base de datos sincronizada.');

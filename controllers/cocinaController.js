@@ -1,5 +1,5 @@
 'use strict';
-const { Pedido, PedidoItem, Mesa, Componente, Grupo } = require('../models');
+const { Pedido, PedidoItem, Mesa, Componente, Grupo, Menu } = require('../models');
 const { Op } = require('sequelize');
 
 // Mostrar Dashboard
@@ -13,42 +13,108 @@ exports.showDashboard = async (req, res) => {
                     model: PedidoItem, as: 'items',
                     include: [{
                         model: Componente, as: 'componentes',
-                        through: { attributes: [] },
+                        through: { attributes: ['createdAt', 'updatedAt'] },
                         include: [{ model: Grupo, as: 'grupo' }]
                     }]
                 }
             ],
             order: [['createdAt', 'ASC']]
         });
-        res.render('cocina/dashboard', { pageTitle: 'Cocina', pedidos });
-    } catch (error) { res.redirect('/'); }
+
+        // LÓGICA DE DETECCIÓN DE CAMBIOS (INMEDIATA)
+        const pedidosProcesados = pedidos.map(p => {
+            const pedidoJSON = p.toJSON();
+            const fechaPedido = new Date(pedidoJSON.createdAt).getTime();
+            let pedidoModificado = false;
+
+            if(pedidoJSON.items) {
+                pedidoJSON.items.forEach(item => {
+                    if(item.componentes) {
+                        item.componentes.forEach(comp => {
+                            const throughData = comp.PedidoItemComponente || comp.through || {};
+                            const fechaAgregado = new Date(throughData.createdAt || item.updatedAt).getTime();
+                            
+                            if ((fechaAgregado - fechaPedido) > 2000) {
+                                comp.es_nuevo = true;
+                                pedidoModificado = true; 
+                            } else {
+                                comp.es_nuevo = false;
+                            }
+                        });
+                    }
+                });
+            }
+            
+            pedidoJSON.fue_modificado = pedidoModificado;
+            return pedidoJSON;
+        });
+
+        res.render('cocina/dashboard', { pageTitle: 'Cocina', pedidos: pedidosProcesados });
+    } catch (error) { 
+        console.error("Error Dashboard:", error);
+        res.redirect('/'); 
+    }
 };
 
-// Actualizar Estado (Terminar Plato)
+// Actualizar Estado + FIX ACCESO DENEGADO (JSON) + FIX PRECIO $0
 exports.updateEstadoPedido = async (req, res) => {
     try {
-        const { pedidoId } = req.params;
+        const rawId = req.params.pedidoId || req.params.id;
+        const idReal = parseInt(rawId, 10);
         const { nuevoEstado } = req.body;
-        // Obtenemos el ID correcto (a veces viene en params como id o pedidoId)
-        const idReal = pedidoId || req.params.id;
+
+        if (!idReal || isNaN(idReal)) return res.status(400).json({ success: false, message: 'ID de pedido inválido.' });
 
         const pedido = await Pedido.findByPk(idReal, { 
-            include: [{ model: Mesa, as: 'mesa' }] 
+            include: [
+                { model: Mesa, as: 'mesa' },
+                { model: PedidoItem, as: 'items' } 
+            ] 
         });
         
-        if (!pedido) return res.redirect('/cocina');
+        if (!pedido) return res.status(404).json({ success: false, message: 'Pedido no encontrado.' });
 
-        // 1. Guardar estado del pedido
+        // =================================================================
+        // BLOQUE DE REPARACIÓN DE PRECIOS $0
+        // =================================================================
+        if (nuevoEstado === 'elaborado') {
+            let granTotal = 0;
+
+            for (const item of pedido.items) {
+                // *** USO DE precio_unitario ***
+                let precioItem = parseFloat(item.precio_unitario || 0);
+
+                if (precioItem === 0) {
+                    let menuOriginal = null;
+                    if (item.menu_id) menuOriginal = await Menu.findByPk(item.menu_id);
+                    if (!menuOriginal && item.menu_nombre) menuOriginal = await Menu.findOne({ where: { nombre: item.menu_nombre } });
+
+                    if (menuOriginal) {
+                        precioItem = parseFloat(menuOriginal.precio_base);
+                        item.precio_unitario = precioItem; // Guardamos en la BD
+                        await item.save();
+                    }
+                }
+                
+                granTotal += precioItem;
+            }
+            
+            // Si tienes columna total, descomenta esto:
+            /*
+            if (granTotal > 0) {
+                await Pedido.update({ total: granTotal }, { where: { id: pedido.id }});
+            }
+            */
+        }
+        // =================================================================
+
+        // Guardar estado nuevo
         pedido.estado = nuevoEstado;
         await pedido.save();
 
-        // 2. CORRECCIÓN: Actualizar mesa directamente por ID
-        // Si el cocinero dice "Listo" ('elaborado'), la mesa pasa a 'para_recoger'
+        // Liberar Mesa para recoger
         if (nuevoEstado === 'elaborado') {
-            await Mesa.update(
-                { estado: 'para_recoger' }, 
-                { where: { id: pedido.mesa_id } } // Usamos mesa_id del pedido
-            );
+            await Mesa.update({ estado: 'para_recoger' }, { where: { id: pedido.mesa_id } });
         }
 
         // 3. Notificar Sockets
@@ -59,17 +125,18 @@ exports.updateEstadoPedido = async (req, res) => {
                 nuevoEstado, 
                 mesaNumero: pedido.mesa ? pedido.mesa.numero : '?' 
             });
-            
             if (nuevoEstado === 'elaborado') {
-                // Esto hace que la mesa se ponga AZUL en el mapa del mesero
                 io.emit('pedido_listo_para_recoger', { mesaId: pedido.mesa_id });
             }
         }
-        res.redirect('/cocina');
+        
+        // FIX ACCESO DENEGADO: Respondemos con JSON en lugar de hacer un redirect
+        return res.json({ success: true, message: 'Estado actualizado correctamente.' });
 
     } catch (error) { 
-        console.error("Error update cocina:", error); 
-        res.redirect('/cocina'); 
+        console.error("Error crítico updateEstadoPedido:", error); 
+        // En caso de error, respondemos con error JSON
+        return res.status(500).json({ success: false, message: 'Error interno del servidor. Consulte la consola.' });
     }
 };
 
@@ -78,26 +145,19 @@ exports.getResumenDespachos = async (req, res) => {
     try {
         const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
         const finDia = new Date(); finDia.setHours(23, 59, 59, 999);
-
         const items = await PedidoItem.findAll({
             include: [{
                 model: Pedido, as: 'pedido',
-                where: { 
-                    estado: ['elaborado', 'entregado', 'pagado'],
-                    createdAt: { [Op.between]: [inicioDia, finDia] }
-                },
+                where: { estado: ['elaborado', 'entregado', 'pagado'], createdAt: { [Op.between]: [inicioDia, finDia] } },
                 required: true 
             }]
         });
-
-        const conteo = {};
-        let total = 0;
+        const conteo = {}; let total = 0;
         items.forEach(item => {
             const nombre = item.menu_nombre || 'Plato Estándar';
             conteo[nombre] = (conteo[nombre] || 0) + 1;
             total++;
         });
-
         res.json({ success: true, conteo, total });
     } catch (error) { res.status(500).json({ success: false }); }
 };

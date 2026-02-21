@@ -1,7 +1,11 @@
 <%- include('../partials/header') %>
 
 <style>
-    /* 1. ANIMACIÓN NUEVO PEDIDO (Borde Verde) */
+    :root {
+        --k-card-radius: 14px;
+        --k-card-shadow: 0 8px 20px rgba(20, 24, 31, 0.08);
+    }
+    /* Animación pedido nuevo */
     .nuevo-pedido-animacion { 
         animation: flashGreen 2s infinite; 
         border: 3px solid #28a745 !important; 
@@ -11,36 +15,39 @@
         70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); } 
         100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); } 
     }
-    
-    /* 2. ESTILO VERDE FLUORESCENTE PARA MODIFICADOS (Tu requerimiento) */
-    .bg-fluorescente {
+
+    /* COLOR FOSFORESCENTE (VERDE NEÓN) */
+    .bg-neon {
         background-color: #39ff14 !important; /* Verde Neón */
         color: black !important;
-        border: 3px solid #000 !important;
+        font-weight: 900 !important;
+        border: 2px solid black !important;
         box-shadow: 0 0 15px #39ff14;
-        animation: latido 1s infinite alternate;
+        animation: latidoNeon 0.8s infinite alternate;
     }
-    .bg-fluorescente .card-header, 
-    .bg-fluorescente .card-footer {
-        background-color: transparent !important;
-        border-color: black !important;
-        color: black !important;
-    }
-    .bg-fluorescente .badge {
-        background-color: black !important;
-        color: #39ff14 !important;
-    }
-    @keyframes latido {
-        from { transform: scale(1); }
-        to { transform: scale(1.02); }
-    }
-
-    /* 3. ALERTA DEMORA */
-    .alerta-demora { border: 4px solid red !important; }
-
-    .reloj-cocina { font-family: monospace; font-weight: bold; font-size: 1.2rem; }
     
-    /* Estilos móviles */
+    @keyframes latidoNeon {
+        from { transform: scale(1); box-shadow: 0 0 5px #39ff14; }
+        to { transform: scale(1.05); box-shadow: 0 0 20px #39ff14; }
+    }
+
+    .alerta-demora { border: 4px solid red !important; }
+    .reloj-cocina { font-family: monospace; font-weight: bold; font-size: 1.2rem; }
+    .pedido-col { padding: 4px; }
+    .k-card { border-radius: var(--k-card-radius); box-shadow: var(--k-card-shadow); overflow: hidden; }
+    .k-card .card-header { padding: 10px 12px; }
+    .k-card .card-body { padding: 12px; }
+    .k-card .card-footer { padding: 10px 12px; background: #fff; }
+    .items-list { display: flex; flex-direction: column; gap: 8px; }
+    .texto-cambio {
+        background-color: #39ff14;
+        color: #111;
+        border-radius: 4px;
+        padding: 0 4px;
+        font-weight: 800;
+    }
+
+    /* Ajustes móviles */
     @media (max-width: 768px) {
         .col-movil-compacto { padding-left: 4px; padding-right: 4px; }
         .comanda-card h4 { font-size: 1rem; }
@@ -49,7 +56,7 @@
 </style>
 
 <div class="container-fluid mt-3">
-    <!-- BARRA SUPERIOR -->
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm">
         <div class="d-flex align-items-center gap-2">
             <h1 class="m-0"><i class="fas fa-fire-alt text-danger"></i> Cocina</h1>
@@ -62,12 +69,12 @@
         </div>
     </div>
 
-    <!-- CONTENEDOR DE PEDIDOS -->
-    <div class="row g-2" id="pedidos-container">
+    <!-- Contenedor -->
+    <div class="row g-3" id="pedidos-container">
         <% if (pedidos.length === 0) { %>
             <div id="no-pedidos-placeholder" class="col-12">
                 <div class="alert alert-secondary text-center py-5">
-                    <h1><i class="fas fa-check-circle"></i></h1><p>Todo listo por ahora</p>
+                    <h1><i class="fas fa-check-circle"></i></h1><p>Todo en orden</p>
                 </div>
             </div>
         <% } else { %>
@@ -78,16 +85,19 @@
     </div>
 </div>
 
-<!-- TEMPLATE PARA GENERAR PEDIDOS CON JS -->
+<!-- TEMPLATE JS -->
 <template id="comanda-template">
-    <div class="col-12 col-md-6 col-lg-4 mb-3 comanda-card col-movil-compacto">
-        <div class="card h-100 shadow-sm border-danger">
+    <div class="col-12 col-md-6 col-lg-4 mb-3 comanda-card pedido-col col-movil-compacto">
+        <div class="card h-100 k-card shadow-sm border-danger">
             <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                <h4 class="mb-0 fw-bold">Mesa <span class="mesa-numero"></span> <span class="etiqueta-modificado"></span></h4>
+                <h4 class="mb-0 fw-bold">Mesa <span class="mesa-numero"></span></h4>
                 <span class="badge bg-white text-danger fw-bold">#<span class="pedido-id"></span></span>
             </div>
             <div class="card-body p-2">
-                <div class="text-muted small mb-1"><i class="far fa-clock"></i> <span class="pedido-hora"></span></div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="text-muted small"><i class="far fa-clock"></i> <span class="pedido-hora"></span></div>
+                    <span class="badge bg-neon text-dark d-none aviso-cambio">¡MODIFICADO!</span>
+                </div>
                 <hr class="my-1">
                 <div class="items-list"></div>
             </div>
@@ -105,10 +115,55 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+    const socket = io();
+    const audio = new Audio('/sounds/notification.mp3');
+    let sonidoActivado = false;
+    
+    // =========================================================================
+    // FUNCIÓN CRÍTICA PARA FIX "ACCESO DENEGADO"
+    // =========================================================================
+    function attachFormListener(form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const button = form.querySelector('button');
+            button.disabled = true;
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    // Serializa el formulario para enviarlo como body
+                    body: new URLSearchParams(new FormData(form)).toString()
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Si el servidor confirma el éxito, usamos el socket para actualizar la tarjeta
+                    const pedidoId = form.action.split('/').slice(-2, -1)[0];
+                    socket.emit('actualizacion_estado', { pedidoId: parseInt(pedidoId), nuevoEstado: 'elaborado' }); 
+                } else {
+                    alert('Error al actualizar estado: ' + (result.message || 'Fallo desconocido.'));
+                    button.disabled = false;
+                    button.innerHTML = originalHTML;
+                }
+            } catch (error) {
+                console.error('Error de red/servidor al enviar a cocina:', error);
+                alert('Error de conexión. Se recomienda recargar la página.');
+                location.reload(); 
+            }
+        });
+    }
+    // =========================================================================
+
     document.addEventListener('DOMContentLoaded', function () {
-        const socket = io();
-        const audio = new Audio('/sounds/notification.mp3');
-        let sonidoActivado = false;
+        
+        // 1. APLICA EL LISTENER A FORMULARIOS CARGADOS INICIALMENTE
+        document.querySelectorAll('.estado-form').forEach(attachFormListener);
+        
+        actualizarContador();
 
         // Reloj
         setInterval(() => { 
@@ -117,129 +172,165 @@
             if(el) el.innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         }, 1000);
 
-        // Activar Sonido
+        // Sonido
         document.getElementById('btn-activar-sonido').addEventListener('click', function() { 
             audio.play().then(() => { 
                 sonidoActivado = true; 
                 this.className = 'btn btn-success btn-sm'; 
                 this.innerHTML = '<i class="fas fa-volume-up"></i>'; 
                 this.disabled = true; 
-            }).catch(e => alert("Toca la pantalla primero para activar audio")); 
+            }).catch(e => alert("Toque la pantalla para activar")); 
         });
 
-        // Modo Pánico (Demora)
+        // Demora (10 min)
         setInterval(() => {
             const ahora = new Date();
-            document.querySelectorAll('.comanda-card').forEach(card => {
-                // Solo si no es modificado (para no quitar el verde)
-                if (!card.querySelector('.card').classList.contains('bg-fluorescente')) {
-                    if ((ahora - new Date(card.dataset.fecha)) > 60000 && !card.querySelector('.border-success')) {
-                        card.querySelector('.card').classList.add('alerta-demora');
+            document.querySelectorAll('.comanda-card, .comanda-card-wrapper').forEach(wrapper => {
+                const card = wrapper.querySelector('.card');
+                if (card && !card.classList.contains('border-success')) {
+                    const fechaStr = wrapper.dataset.fecha || wrapper.querySelector('.comanda-card')?.dataset.fecha;
+                    if (fechaStr && (ahora - new Date(fechaStr)) > 600000) { 
+                        card.classList.add('alerta-demora');
                     }
                 }
             });
         }, 5000);
 
-        // --- FUNCIÓN CENTRAL PARA DIBUJAR TARJETA ---
-        function renderizarTarjeta(pedido, esModificado = false) {
+        // --- RENDERIZADO TARJETA ---
+        function renderizarTarjeta(pedido, esModificacion = false) {
             const ph = document.getElementById('no-pedidos-placeholder'); 
             if (ph) ph.style.display = 'none';
 
-            // Si es modificado, borramos la vieja primero
-            if (esModificado) {
-                const old = document.getElementById(`pedido-${pedido.id}`);
-                if (old) old.remove();
-            }
+            const old = document.getElementById(`pedido-${pedido.id}`);
+            if (old) old.remove();
 
             const template = document.getElementById('comanda-template');
             const clone = template.content.cloneNode(true);
             const cardRoot = clone.querySelector('.comanda-card');
-            const cardInner = clone.querySelector('.card');
             
             cardRoot.id = `pedido-${pedido.id}`;
-            cardRoot.dataset.fecha = new Date().toISOString();
+            cardRoot.dataset.fecha = pedido.createdAt;
 
-            // ESTILOS VISUALES
-            if (esModificado) {
-                cardInner.classList.remove('border-danger');
-                cardInner.classList.add('bg-fluorescente'); // CLASE VERDE FOSFORESCENTE
-                clone.querySelector('.etiqueta-modificado').innerHTML = '<span class="badge bg-black text-warning blink">MODIFICADO</span>';
-            } else {
-                cardRoot.classList.add('nuevo-pedido-animacion');
-            }
+            if (esModificacion) clone.querySelector('.aviso-cambio').classList.remove('d-none');
+            else cardRoot.classList.add('nuevo-pedido-animacion');
             
             clone.querySelector('.mesa-numero').textContent = pedido.mesa.numero;
             clone.querySelector('.pedido-id').textContent = pedido.id;
-            clone.querySelector('.pedido-hora').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            clone.querySelector('.estado-form').action = `/cocina/pedido/${pedido.id}/estado`;
+            clone.querySelector('.pedido-hora').textContent = new Date(pedido.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            
+            // Fix URL
+            const form = clone.querySelector('.estado-form');
+            form.setAttribute('action', `/cocina/pedido/${pedido.id}/estado`);
 
-            // RENDERIZAR ITEMS (COMPACTO)
             const lista = clone.querySelector('.items-list');
-            pedido.items.forEach(item => {
-                const grupos = {};
-                if(item.componentes) item.componentes.forEach(c => {
-                    const g = c.grupo ? c.grupo.nombre : 'Otros';
-                    if(!grupos[g]) grupos[g] = [];
-                    grupos[g].push(c.nombre);
-                });
+            
+            if(pedido.items) {
+                pedido.items.forEach(item => {
+                    const grupos = {}; 
+                    const grupoTieneNuevos = {}; 
 
-                let destacados = '', secundarios = '';
-                Object.keys(grupos).forEach(gName => {
-                    const cont = grupos[gName].join(', ');
-                    if(gName.toLowerCase().includes('prote') || gName.toLowerCase().includes('principio')) {
-                        destacados += `<div class="mb-1"><span class="badge bg-warning text-dark me-1">${gName}</span><span class="fw-bold text-dark fs-5">${cont}</span></div>`;
-                    } else {
-                        secundarios += `<span class="badge bg-light text-secondary border me-1">${gName}: ${cont}</span>`;
+                    if(item.componentes) {
+                        item.componentes.forEach(c => {
+                            const gName = c.grupo ? c.grupo.nombre : 'Otros';
+                            if(!grupos[gName]) grupos[gName] = [];
+                            
+                            grupos[gName].push({ nombre: c.nombre, es_nuevo: !!c.es_nuevo });
+                            if (c.es_nuevo) grupoTieneNuevos[gName] = true; 
+                        });
                     }
-                });
 
-                const div = document.createElement('div');
-                div.className = 'mb-2 border-bottom pb-1';
-                div.innerHTML = `
-                    <div class="d-flex justify-content-between bg-light px-1 rounded">
-                        <strong class="text-primary small">C-${item.cliente_numero}</strong>
-                        <span class="fw-bold small text-dark">${item.menu_nombre || 'Plato'}</span>
-                    </div>
-                    <div class="ps-1 mt-1">${destacados}<div class="mt-1 lh-1">${secundarios}</div></div>
-                    ${item.notas ? `<div class="alert alert-warning py-0 px-1 mt-1 small"><strong>OJO:</strong> ${item.notas}</div>` : ''}
-                `;
-                lista.appendChild(div);
-            });
+                    let destacados = '', secundarios = '';
+                    
+                    Object.keys(grupos).forEach(gName => {
+                        const contenido = grupos[gName]
+                            .map(c => c.es_nuevo
+                                ? `<span class="texto-cambio">${c.nombre}</span>`
+                                : c.nombre
+                            )
+                            .join(', ');
+                        
+                        const claseColor = grupoTieneNuevos[gName] ? 'bg-neon' : 'bg-warning';
+
+                        if(gName.toLowerCase().includes('prote') || gName.toLowerCase().includes('principio') || gName.toLowerCase().includes('sopa')) {
+                            destacados += `<div class="mb-1">
+                                <span class="badge ${claseColor} text-dark me-1">${gName}</span>
+                                <span class="fw-bold text-dark fs-5">${contenido}</span>
+                            </div>`;
+                        } else {
+                            const claseBadgeSec = grupoTieneNuevos[gName] ? 'bg-neon' : 'bg-light text-secondary border';
+                            secundarios += `<span class="badge ${claseBadgeSec} me-1">${gName}:</span> ${contenido} `;
+                        }
+                    });
+
+                    const div = document.createElement('div');
+                    div.className = 'mb-2 border-bottom pb-1';
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between bg-light px-1 rounded">
+                            <strong class="text-primary small">C-${item.cliente_numero || '?'}</strong>
+                            <span class="fw-bold small text-dark">${item.menu_nombre || 'Plato'}</span>
+                        </div>
+                        <div class="ps-1 mt-1">${destacados}<div class="mt-1 lh-1">${secundarios}</div></div>
+                        ${item.notas ? `<div class="alert alert-warning py-0 px-1 mt-1 small"><strong>NOTA:</strong> ${item.notas}</div>` : ''}
+                    `;
+                    lista.appendChild(div);
+                });
+            }
 
             document.getElementById('pedidos-container').prepend(clone);
+            
+            // 2. APLICA EL LISTENER AL NUEVO FORMULARIO
+            attachFormListener(form);
+            
             actualizarContador();
         }
 
         function actualizarContador() {
-            document.getElementById('contador-pedidos').textContent = document.querySelectorAll('.comanda-card').length;
+            document.getElementById('contador-pedidos').textContent = document.querySelectorAll('.comanda-card, .comanda-card-wrapper').length;
         }
 
-        // --- LISTENERS DE SOCKET ---
+        // SOCKETS
         socket.on('nuevo_pedido', (p) => {
             if (sonidoActivado) audio.play();
             renderizarTarjeta(p, false);
         });
 
         socket.on('pedido_modificado', (p) => {
-            if (sonidoActivado) { audio.play(); setTimeout(()=>audio.play(), 500); } // Doble sonido
-            renderizarTarjeta(p, true);
+            try {
+                const debugCambios = (p.items || []).map(item => ({
+                    cliente: item.cliente_numero,
+                    nuevos: (item.componentes || []).filter(c => c.es_nuevo).map(c => c.nombre)
+                }));
+                console.log('DEBUG cocina pedido_modificado:', debugCambios);
+            } catch (e) {}
+            if (sonidoActivado) { audio.play(); setTimeout(()=>audio.play(), 600); }
+            renderizarTarjeta(p, true); 
         });
 
         socket.on('actualizacion_estado', (data) => {
             const card = document.getElementById(`pedido-${data.pedidoId}`);
             if (!card) return;
+
             if (data.nuevoEstado === 'elaborado') {
                 const inner = card.querySelector('.card');
-                inner.className = 'card h-100 shadow-sm border-success'; // Quitar estilos fluo
+                inner.classList.remove('border-danger');
+                inner.classList.add('border-success');
                 card.querySelector('.card-header').className = 'card-header bg-success text-white d-flex justify-content-between align-items-center';
+                
+                // Limpiar neones al terminar
+                const avisos = card.querySelectorAll('.bg-neon, .aviso-cambio');
+                avisos.forEach(el => {
+                    el.classList.remove('bg-neon', 'aviso-cambio');
+                    if(el.tagName === 'SPAN' && el.innerHTML === '¡MODIFICADO!') el.remove();
+                    else el.classList.add('bg-warning');
+                });
+
                 card.querySelector('.card-footer').innerHTML = `<button class="btn btn-success w-100 disabled"><i class="fas fa-bell"></i> Listo</button>`;
+            
             } else if (data.nuevoEstado === 'entregado') {
                 card.style.opacity = '0';
                 setTimeout(() => { card.remove(); actualizarContador(); }, 500);
             }
         });
-        
-        actualizarContador();
     });
 </script>
 <%- include('../partials/footer') %>
