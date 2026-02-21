@@ -1,10 +1,10 @@
-'use strict';
-// IMPORTACIÓN ÚNICA Y CENTRALIZADA
+﻿'use strict';
+// IMPORTACIÃ“N ÃšNICA Y CENTRALIZADA
 const { Usuario, Rol, Mesa, Menu, Grupo, Componente, Pedido, PedidoItem, sequelize, Empresa, MenuComponente } = require('../models');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
-// HELPER: Función para calcular el total de un pedido de forma consistente
+// HELPER: FunciÃ³n para calcular el total de un pedido de forma consistente
 const calcularTotalPedido = (pedido) => {
     let total = 0;
     if (pedido.items) {
@@ -20,6 +20,33 @@ const calcularTotalPedido = (pedido) => {
     return total;
 };
 
+const getHoyStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+const parseLocalDate = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const parts = dateStr.split('-').map(n => parseInt(n, 10));
+    if (parts.length !== 3 || parts.some(n => isNaN(n))) return null;
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d);
+};
+
+const buildDateRange = (fechaInicioStr, fechaFinStr) => {
+    const startBase = parseLocalDate(fechaInicioStr);
+    const endBase = parseLocalDate(fechaFinStr);
+    if (!startBase || !endBase) return null;
+    const start = new Date(startBase);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endBase);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+};
+
 // ==========================================
 // 1. DASHBOARD AVANZADO (CENTRO DE COMANDO)
 // ==========================================
@@ -27,7 +54,7 @@ exports.showDashboard = async (req, res) => {
     try {
         const hoy = new Date();
         
-        // --- DEFINICIÓN DE RANGOS DE FECHAS ---
+        // --- DEFINICIÃ“N DE RANGOS DE FECHAS ---
         const startDay = new Date(hoy); startDay.setHours(0,0,0,0);
         const endDay = new Date(hoy); endDay.setHours(23,59,59,999);
 
@@ -62,7 +89,7 @@ exports.showDashboard = async (req, res) => {
             ]
         });
 
-        // B. Deuda Empresas (Crédito activo)
+        // B. Deuda Empresas (CrÃ©dito activo)
         const pedidosCredito = await Pedido.findAll({
             where: { medio_pago: 'credito_empresa', estado: 'pagado' },
             include: [
@@ -82,6 +109,10 @@ exports.showDashboard = async (req, res) => {
         };
 
         const ventasPorHora = new Array(24).fill(0);
+        const pedidosPorHora = new Array(24).fill(0);
+        const ticketPromedioHora = new Array(24).fill(0);
+        const ventasPorDiaSemana = new Array(7).fill(0);   // Lunes..Domingo
+        const pedidosPorDiaSemana = new Array(7).fill(0);  // Lunes..Domingo
         const rankingPlatos = {};     
         const rankingMesas = {};      
         const consumoComponentes = {}; 
@@ -95,9 +126,16 @@ exports.showDashboard = async (req, res) => {
                 kpis.dia.total += totalP;
                 kpis.dia.cantidad++;
                 ventasPorHora[fecha.getHours()] += totalP; // Gráfica horas (solo hoy)
+                pedidosPorHora[fecha.getHours()] += 1;
             }
             if (fecha >= startAyer && fecha <= endAyer) kpis.ayer.total += totalP;
-            if (fecha >= startWeek) { kpis.semana.total += totalP; kpis.semana.cantidad++; }
+            if (fecha >= startWeek) {
+                kpis.semana.total += totalP;
+                kpis.semana.cantidad++;
+                const diaIdx = (fecha.getDay() + 6) % 7; // Lunes=0 ... Domingo=6
+                ventasPorDiaSemana[diaIdx] += totalP;
+                pedidosPorDiaSemana[diaIdx] += 1;
+            }
             if (fecha >= startMonth) { 
                 kpis.mes.total += totalP; 
                 kpis.mes.cantidad++; 
@@ -119,10 +157,17 @@ exports.showDashboard = async (req, res) => {
 
                 // Ranking Mesas
                 const mesaNombre = p.mesa ? `Mesa ${p.mesa.numero}` : 'Barra/Ext';
-                rankingMesas[mesaNombre] = (rankingMesas[mesaNombre] || 0) + totalP;
+                if (!rankingMesas[mesaNombre]) rankingMesas[mesaNombre] = { total: 0, pedidos: 0 };
+                rankingMesas[mesaNombre].total += totalP;
+                rankingMesas[mesaNombre].pedidos += 1;
             }
             if (fecha >= startLastMonth && fecha < startMonth) kpis.mesAnterior.total += totalP;
         });
+
+        
+        for (let i = 0; i < 24; i++) {
+            ticketPromedioHora[i] = pedidosPorHora[i] > 0 ? (ventasPorHora[i] / pedidosPorHora[i]) : 0;
+        }
 
         // --- PROCESAR DEUDAS EMPRESAS ---
         const deudaEmpresas = {};
@@ -155,7 +200,13 @@ exports.showDashboard = async (req, res) => {
             .slice(0, 8);
         
         const topMesas = Object.entries(rankingMesas)
-            .sort((a, b) => b[1] - a[1])
+            .map(([nombre, data]) => ({
+                nombre,
+                total: data.total,
+                pedidos: data.pedidos,
+                ticketPromedio: data.pedidos > 0 ? data.total / data.pedidos : 0
+            }))
+            .sort((a, b) => b.total - a.total)
             .slice(0, 5);
 
         // --- RENDERIZAR ---
@@ -164,20 +215,26 @@ exports.showDashboard = async (req, res) => {
             kpis,
             promedioDiario: kpis.mes.cantidad > 0 ? kpis.mes.total / new Date().getDate() : 0,
             
-            // Datos para gráficas
+            // Datos para grÃ¡ficas
             graficos: {
                 horasLabels: JSON.stringify([...Array(24).keys()].map(h => `${h}:00`)),
                 horasData: JSON.stringify(ventasPorHora),
+                horasPedidosData: JSON.stringify(pedidosPorHora),
+                horasTicketPromedioData: JSON.stringify(ticketPromedioHora),
+                semanaLabels: JSON.stringify(['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']),
+                semanaVentasData: JSON.stringify(ventasPorDiaSemana),
+                semanaPedidosData: JSON.stringify(pedidosPorDiaSemana),
                 topPlatosNombres: JSON.stringify(topPlatos.map(p => p.nombre)),
                 topPlatosData: JSON.stringify(topPlatos.map(p => p.cant)),
-                topMesasLabels: JSON.stringify(topMesas.map(m => m[0])),
-                topMesasData: JSON.stringify(topMesas.map(m => m[1]))
+                topMesasLabels: JSON.stringify(topMesas.map(m => m.nombre)),
+                topMesasData: JSON.stringify(topMesas.map(m => m.total)),
+                topMesasDetalle: JSON.stringify(topMesas)
             },
             
             topComponentes,
             topPlatosList: topPlatos,
             
-            // Sección Deudas
+            // SecciÃ³n Deudas
             deudaEmpresas: Object.values(deudaEmpresas),
             totalFiado,
             clientesFiados
@@ -190,7 +247,7 @@ exports.showDashboard = async (req, res) => {
 };
 
 // ==========================================
-// 2. GESTIÓN DE MENÚS (CRUD)
+// 2. GESTIÃ“N DE MENÃšS (CRUD)
 // ==========================================
 exports.getGestionMenu = async (req, res) => { try { const m = await Menu.findAll({order:[['id','ASC']]}); res.render('admin/gestion-menu',{menus:m}); } catch(e){ res.redirect('/admin'); } };
 
@@ -198,7 +255,7 @@ exports.getGestionMenu = async (req, res) => { try { const m = await Menu.findAl
 exports.showNewMenuForm = (req, res) => {
     try {
         res.render('admin/menu-form', {
-            pageTitle: 'Crear Nuevo Menú',
+            pageTitle: 'Crear Nuevo MenÃº',
             menu: {}, 
             action: '/admin/menus/create'
         });
@@ -208,7 +265,7 @@ exports.showNewMenuForm = (req, res) => {
     }
 };
 
-// GUARDAR NUEVO MENÚ (POST)
+// GUARDAR NUEVO MENÃš (POST)
 exports.createMenu = async (req, res) => {
     try {
         const { nombre, precio_base, activo } = req.body;
@@ -219,17 +276,17 @@ exports.createMenu = async (req, res) => {
         });
         res.redirect('/admin/menus');
     } catch (error) {
-        console.error('Error al crear menú:', error);
+        console.error('Error al crear menÃº:', error);
         res.redirect('/admin/menus/create');
     }
 };
 
-exports.showEditMenuForm = async (req, res) => { try { const m = await Menu.findByPk(req.params.id); res.render('admin/menu-form',{menu:m, pageTitle: 'Editar Menú', action: `/admin/menus/edit/${m.id}`}); } catch(e){ res.redirect('/admin/gestion-menu'); } };
+exports.showEditMenuForm = async (req, res) => { try { const m = await Menu.findByPk(req.params.id); res.render('admin/menu-form',{menu:m, pageTitle: 'Editar MenÃº', action: `/admin/menus/edit/${m.id}`}); } catch(e){ res.redirect('/admin/gestion-menu'); } };
 exports.updateMenu = async (req, res) => { try { await Menu.update({...req.body, activo:!!req.body.activo}, {where:{id:req.params.id}}); res.redirect('/admin/gestion-menu'); } catch(e){ res.redirect('/admin/gestion-menu'); } };
 exports.deleteMenu = async (req, res) => { try { await Menu.destroy({where:{id:req.params.id}}); res.redirect('/admin/gestion-menu'); } catch(e){ res.redirect('/admin/gestion-menu'); } };
 exports.toggleMenuEstado = async (req, res) => { try { const m=await Menu.findByPk(req.params.id); m.activo=!m.activo; await m.save(); res.json({success:true, nuevoEstado:m.activo}); } catch(e){ res.status(500).json({success:false}); } };
 
-// CONFIGURACIÓN DE COMPONENTES DEL MENÚ
+// CONFIGURACIÃ“N DE COMPONENTES DEL MENÃš
 exports.showConfigurarMenu = async (req, res) => {
     try {
         const menu = await Menu.findByPk(req.params.id);
@@ -242,7 +299,7 @@ exports.showConfigurarMenu = async (req, res) => {
         
         const configMap = {};
         compSel.forEach(c => {
-            // Lógica para encontrar la tabla pivote sin importar cómo la llamó Sequelize
+            // LÃ³gica para encontrar la tabla pivote sin importar cÃ³mo la llamÃ³ Sequelize
             let pivote = c.menu_componentes || c.MenuComponente || c.dataValues.menu_componentes;
             
             configMap[c.id] = {
@@ -252,7 +309,7 @@ exports.showConfigurarMenu = async (req, res) => {
         });
 
         res.render('admin/configurar-menu', { 
-            pageTitle: 'Configurar Menú', 
+            pageTitle: 'Configurar MenÃº', 
             menu, 
             grupos, 
             configMap 
@@ -300,7 +357,7 @@ exports.saveConfigurarMenu = async (req, res) => {
 };
 
 // ==========================================
-// 3. GESTIÓN DE COMPONENTES Y GRUPOS
+// 3. GESTIÃ“N DE COMPONENTES Y GRUPOS
 // ==========================================
 exports.getGestionComponentes = async (req, res) => { try { const g=await Grupo.findAll({include:{model:Componente,as:'componentes'}, order:[['nombre','ASC']]}); res.render('admin/gestion-componentes',{grupos:g}); } catch(e){ res.redirect('/admin'); } };
 exports.createComponente = async (req, res) => { try { const {nombre, grupo_id, precio_adicional} = req.body; await Componente.create({nombre, grupo_id, precio_adicional: parseFloat(precio_adicional)||0}); res.redirect('/admin/gestion-componentes'); } catch (e) { res.redirect('/admin/gestion-componentes'); } };
@@ -313,7 +370,7 @@ exports.updateGrupo = async (req, res) => { await Grupo.update(req.body, {where:
 exports.deleteGrupo = async (req, res) => { await Grupo.destroy({where:{id:req.params.id}}); res.redirect('/admin/gestion-componentes'); };
 
 // ==========================================
-// 4. GESTIÓN DE USUARIOS
+// 4. GESTIÃ“N DE USUARIOS
 // ==========================================
 exports.getUsuarios = async (req, res) => { const u=await Usuario.findAll({include:{model:Rol,as:'rol'}}); res.render('admin/usuarios',{usuarios:u}); };
 exports.showNewUserForm = async (req, res) => { const r=await Rol.findAll(); res.render('admin/usuario-form',{usuario:{}, roles:r}); };
@@ -323,7 +380,7 @@ exports.updateUser = async (req, res) => { const u=await Usuario.findByPk(req.pa
 exports.toggleUserStatus = async (req, res) => { const u=await Usuario.findByPk(req.params.id); u.activo=!u.activo; await u.save(); res.redirect('/admin/usuarios'); };
 
 // ==========================================
-// 5. GESTIÓN DE MESAS
+// 5. GESTIÃ“N DE MESAS
 // ==========================================
 exports.getMesas = async (req, res) => { const m=await Mesa.findAll({order:[['numero','ASC']]}); res.render('admin/mesas',{mesas:m}); };
 exports.showNewMesaForm = (req, res) => res.render('admin/mesa-form',{mesa:{}});
@@ -334,11 +391,11 @@ exports.deleteMesa = async (req, res) => { await Mesa.destroy({where:{id:req.par
 
 
 // ==========================================
-// FUNCIÓN: LIBERAR TODO (REFUERZO PARA BUG DE MESAS PEGADAS)
+// FUNCIÃ“N: LIBERAR TODO (REFUERZO PARA BUG DE MESAS PEGADAS)
 // ==========================================
 exports.liberarTodasLasMesas = async (req, res) => {
     try {
-        // Importar Op si no está arriba
+        // Importar Op si no estÃ¡ arriba
         const { Op } = require('sequelize');
         const { Pedido, Mesa } = require('../models');
 
@@ -381,7 +438,7 @@ exports.getMapaEditor = async (req, res) => { const m=await Mesa.findAll(); res.
 exports.saveMapaLayout = async (req, res) => { try{const d=req.body; if(!Array.isArray(d)) return res.status(400).json({success:false}); for(const p of d){ await Mesa.update({pos_x:parseInt(p.x)||0, pos_y:parseInt(p.y)||0, ancho:parseInt(p.w)||120, alto:parseInt(p.h)||120},{where:{id:parseInt(p.id)}}); } res.json({success:true}); }catch(e){res.status(500).json({success:false});} };
 
 // ==========================================
-// 6. GESTIÓN DE EMPRESAS
+// 6. GESTIÃ“N DE EMPRESAS
 // ==========================================
 exports.getGestionEmpresas = async (req, res) => { try{const e=await Empresa.findAll();res.render('admin/gestion-empresas',{empresas:e});}catch(e){res.redirect('/admin');} };
 exports.createEmpresa = async (req, res) => { try{await Empresa.create(req.body);res.redirect('/admin/empresas');}catch(e){res.redirect('/admin/empresas');} };
@@ -395,19 +452,17 @@ exports.getInformes = (req, res) => { res.render('admin/informes', { pageTitle: 
 // REPORTE DE VENTAS (KARDEX) - CORREGIDO
 exports.generarReporteFechas = async (req, res) => {
     try {
-        const hoyStr = new Date().toLocaleDateString('en-CA');
-        const fechaInicio = req.body.fechaInicio || hoyStr;
-        const fechaFin = req.body.fechaFin || hoyStr;
-
-        const startDate = new Date(fechaInicio);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(fechaFin);
-        endDate.setHours(23, 59, 59, 999);
+        const source = { ...(req.query || {}), ...(req.body || {}) };
+        const hoyStr = getHoyStr();
+        const fechaInicio = source.fechaInicio || hoyStr;
+        const fechaFin = source.fechaFin || hoyStr;
+        const rango = buildDateRange(fechaInicio, fechaFin);
+        if (!rango) return res.redirect('/admin/informes');
 
         const pedidos = await Pedido.findAll({
             where: {
                 estado: 'pagado', 
-                createdAt: { [Op.between]: [startDate, endDate] }
+                createdAt: { [Op.between]: [rango.start, rango.end] }
             },
             include: [
                 { model: Mesa, as: 'mesa' },
@@ -451,27 +506,25 @@ exports.generarReporteFechas = async (req, res) => {
 // REPORTE DE RANKING PRODUCTOS - CORREGIDO
 exports.generarReporteTop = async (req, res) => {
     try {
-        const hoyStr = new Date().toLocaleDateString('en-CA');
-        const fechaInicio = req.body.fechaInicio || hoyStr;
-        const fechaFin = req.body.fechaFin || hoyStr;
+        const source = { ...(req.query || {}), ...(req.body || {}) };
+        const hoyStr = getHoyStr();
+        const fechaInicio = source.fechaInicio || hoyStr;
+        const fechaFin = source.fechaFin || hoyStr;
+        const rango = buildDateRange(fechaInicio, fechaFin);
+        if (!rango) return res.redirect('/admin/informes');
 
-        const startDate = new Date(fechaInicio);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(fechaFin);
-        endDate.setHours(23, 59, 59, 999);
-
-        // CONSULTA SOBRE PEDIDOS PAGADOS (Para consistencia con el Kardex)
+        // Ranking comercial: considera platos ya vendidos (entregados) y cobrados (pagados)
         const pedidos = await Pedido.findAll({
             where: {
-                estado: 'pagado', 
-                createdAt: { [Op.between]: [startDate, endDate] }
+                estado: { [Op.in]: ['entregado', 'pagado'] },
+                createdAt: { [Op.between]: [rango.start, rango.end] }
             },
             include: [
                 { model: PedidoItem, as: 'items' }
             ]
         });
 
-        // AGRUPACIÓN MANUAL
+        // AGRUPACIÃ“N MANUAL
         const conteo = {};
 
         pedidos.forEach(pedido => {
@@ -491,12 +544,22 @@ exports.generarReporteTop = async (req, res) => {
 
         const ranking = Object.values(conteo).sort((a, b) => b.cantidad - a.cantidad);
 
+        const totalUnidades = ranking.reduce((acc, p) => acc + p.cantidad, 0);
+        const totalIngresos = ranking.reduce((acc, p) => acc + p.total, 0);
+        const topProducto = ranking.length > 0 ? ranking[0].nombre : 'Sin datos';
+
         res.render('admin/reporte-resultados', {
-            pageTitle: 'Ranking de Productos Más Vendidos',
+            pageTitle: 'Ranking de Productos MÃ¡s Vendidos',
             datos: ranking,
             fechaInicio: fechaInicio, 
             fechaFin: fechaFin,
-            tipo: 'ranking'
+            tipo: 'ranking',
+            resumen: {
+                totalProductos: ranking.length,
+                totalUnidades,
+                totalIngresos,
+                topProducto
+            }
         });
 
     } catch (error) {
@@ -509,8 +572,10 @@ exports.getReporteCuentasCobrar = async (req, res) => { try { const {empresaId,f
 exports.saldarDeudaEmpresa = async (req, res) => { try { const {pedidosIds,accion}=req.body; const {empresaId}=req.query; let where={medio_pago:'credito_empresa',estado:'pagado'}; if(accion==='todo'){if(empresaId)where.empresa_id=empresaId;}else{if(!pedidosIds)return res.redirect('/admin/informes/cobranza'); where.id=pedidosIds;} await Pedido.update({estado:'finalizado'},{where}); res.redirect('/admin/informes/cobranza?empresaId='+(empresaId||'')); } catch(e){ res.redirect('/admin/informes/cobranza'); } };
 
 // ==========================================
-// 8. BILLING (FACTURACIÓN)
+// 8. BILLING (FACTURACIÃ“N)
 // ==========================================
 const billingController = require('../controllers/billingController');
 if(billingController && billingController.getBillingDashboard) exports.getBillingDashboard = billingController.getBillingDashboard;
 else exports.getBillingDashboard = (req,res) => res.redirect('/admin');
+
+

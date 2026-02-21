@@ -77,6 +77,70 @@
         </div>
     <% } %>
 
+    <% if (typeof resumen !== 'undefined' && resumen && tipo === 'ranking') { %>
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm" style="background-color: #e7f1ff; color: #0c4a8a;">
+                    <div class="card-body p-3">
+                        <h6 class="card-title text-uppercase small fw-bold mb-1">Productos</h6>
+                        <h2 class="mb-0 fw-bold"><%= resumen.totalProductos %></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm" style="background-color: #e8f7ee; color: #0f5132;">
+                    <div class="card-body p-3">
+                        <h6 class="card-title text-uppercase small fw-bold mb-1">Unidades</h6>
+                        <h2 class="mb-0 fw-bold"><%= resumen.totalUnidades %></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm" style="background-color: #fff7e6; color: #7a4a00;">
+                    <div class="card-body p-3">
+                        <h6 class="card-title text-uppercase small fw-bold mb-1">Ingresos</h6>
+                        <h2 class="mb-0 fw-bold">$<%= resumen.totalIngresos.toLocaleString('es-CO') %></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card border-0 shadow-sm" style="background-color: #f3ecff; color: #4c1d95;">
+                    <div class="card-body p-3">
+                        <h6 class="card-title text-uppercase small fw-bold mb-1">Top #1</h6>
+                        <h6 class="mb-0 fw-bold"><%= resumen.topProducto %></h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 fw-bold text-primary">Ranking por Unidades</h6>
+                            <small class="text-muted">Top 10</small>
+                        </div>
+                        <div style="height: 280px;">
+                            <canvas id="chartRankingBarras"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="mb-2 fw-bold text-primary">Participación de Top 5</h6>
+                        <div style="height: 240px;">
+                            <canvas id="chartRankingParticipacion"></canvas>
+                        </div>
+                        <div class="mt-2 small text-muted" id="ranking-detalle">Haz clic en una barra o segmento para ver detalle.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <% } %>
+
     <!-- TABLA DE RESULTADOS -->
     <div class="card shadow border-0">
         <div class="card-body p-0">
@@ -134,5 +198,87 @@
         </div>
     </div>
 </div>
+
+<% if (tipo === 'ranking') { %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const rankingDatos = <%- JSON.stringify(datos || []) %>;
+    const formatoCOP = (v) => `$${Math.round(v || 0).toLocaleString('es-CO')}`;
+    const labelsTop10 = rankingDatos.slice(0, 10).map(x => x.nombre);
+    const unidadesTop10 = rankingDatos.slice(0, 10).map(x => x.cantidad);
+    const ingresosTop10 = rankingDatos.slice(0, 10).map(x => x.total);
+    const top5 = rankingDatos.slice(0, 5);
+    const detalleEl = document.getElementById('ranking-detalle');
+
+    const chartBarras = new Chart(document.getElementById('chartRankingBarras'), {
+        type: 'bar',
+        data: {
+            labels: labelsTop10,
+            datasets: [{
+                label: 'Unidades vendidas',
+                data: unidadesTop10,
+                backgroundColor: 'rgba(13, 110, 253, 0.65)',
+                borderColor: '#0d6efd',
+                borderWidth: 1.5,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const i = ctx.dataIndex;
+                            return [
+                                `Unidades: ${unidadesTop10[i]}`,
+                                `Ingresos: ${formatoCOP(ingresosTop10[i])}`
+                            ];
+                        }
+                    }
+                }
+            },
+            onClick: (evt, els) => {
+                if (!els.length) return;
+                const idx = els[0].index;
+                detalleEl.textContent = `${labelsTop10[idx]}: ${unidadesTop10[idx]} unidades | ${formatoCOP(ingresosTop10[idx])}`;
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+            }
+        }
+    });
+
+    const totalTop5 = top5.reduce((a, x) => a + x.cantidad, 0);
+    new Chart(document.getElementById('chartRankingParticipacion'), {
+        type: 'doughnut',
+        data: {
+            labels: top5.map(x => x.nombre),
+            datasets: [{
+                data: top5.map(x => x.cantidad),
+                backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#fd7e14', '#6f42c1'],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 10 } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const val = ctx.raw || 0;
+                            const pct = totalTop5 > 0 ? (val * 100 / totalTop5) : 0;
+                            return `${ctx.label}: ${val} (${pct.toFixed(1)}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+<% } %>
 
 <%- include('../partials/footer') %>
